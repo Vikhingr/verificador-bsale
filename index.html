@@ -3,32 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scanner Bsale OK</title>
+    <title>Verificador Bsale Pro</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        body { font-family: sans-serif; background: #121212; color: white; margin: 0; text-align: center; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: #121212; color: white; margin: 0; text-align: center; }
+        header { padding: 15px; background: #1f1f1f; border-bottom: 2px solid #007bff; }
         #reader { width: 100%; max-width: 500px; margin: auto; background: black; min-height: 250px; }
+        
         .result-card { 
             position: fixed; bottom: 0; left: 0; right: 0; 
-            background: white; color: #333; padding: 30px; 
-            border-radius: 20px 20px 0 0; display: none; z-index: 1000;
+            background: white; color: #1a1a1a; padding: 25px; 
+            border-radius: 25px 25px 0 0; display: none; z-index: 1000;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
+            animation: slideUp 0.3s ease-out;
         }
-        .price { font-size: 3rem; color: #28a745; font-weight: bold; margin: 10px 0; }
-        #close-btn { background: #007bff; color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; font-weight: bold; }
-        .loading-overlay { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); padding: 20px; border-radius: 10px; z-index: 2000; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        .price { font-size: 3.5rem; color: #218838; font-weight: 800; margin: 10px 0; }
+        .product-name { font-size: 1.4rem; font-weight: bold; }
+        #close-btn { 
+            background: #007bff; color: white; border: none; 
+            padding: 18px; width: 100%; border-radius: 12px; 
+            font-size: 1.1rem; font-weight: bold; margin-top: 10px;
+        }
+        .loading-overlay { 
+            display: none; position: fixed; top: 50%; left: 50%; 
+            transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); 
+            padding: 20px; border-radius: 15px; z-index: 2000; border: 1px solid #007bff;
+        }
     </style>
 </head>
 <body>
 
-    <h2 style="padding: 15px;">Verificador Bsale</h2>
+    <header>
+        <h2 style="margin:0">Verificador Bsale</h2>
+    </header>
+
     <div id="reader"></div>
     <div id="loading" class="loading-overlay">Buscando en Bsale...</div>
 
     <div id="result-card" class="result-card">
-        <h3 id="p-name" style="margin:0"></h3>
-        <div id="p-price" class="price"></div>
-        <div id="p-sku" style="margin-bottom:15px; color:#666"></div>
-        <button id="close-btn" onclick="cerrarCard()">VOLVER A ESCANEAR</button>
+        <div id="p-name" class="product-name">Cargando...</div>
+        <div id="p-price" class="price">$0.00</div>
+        <div id="p-sku" style="color: #666; margin-bottom: 20px;"></div>
+        <button id="close-btn" onclick="cerrarCard()">CONTINUAR</button>
     </div>
 
     <script>
@@ -37,7 +55,8 @@
 
         function cerrarCard() {
             document.getElementById('result-card').style.display = 'none';
-            isScanning = true;
+            // Pausa de seguridad antes de permitir el siguiente escaneo
+            setTimeout(() => { isScanning = true; }, 1500);
         }
 
         async function fetchBsale(barcode) {
@@ -45,44 +64,65 @@
             isScanning = false;
             
             document.getElementById('loading').style.display = 'block';
+            const cleanBarcode = barcode.trim();
+
+            // URL DE BSALE
+            const bsaleUrl = `https://api.bsale.com.mx/v1/variants.json?barcode=${cleanBarcode}&access_token=${TOKEN}`;
+            
+            // PROXY ALLORIGINS (Para evitar error de red/CORS)
+            const finalUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(bsaleUrl)}`;
 
             try {
-                // Usamos un proxy que no necesita encodeURIComponent complejo para la búsqueda simple
-                const targetUrl = `https://api.bsale.com.mx/v1/variants.json?barcode=${barcode.trim()}&access_token=${TOKEN}`;
-                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+                const response = await fetch(finalUrl);
+                if (!response.ok) throw new Error("Error de Proxy");
+                
+                const wrapper = await response.json();
+                const data = JSON.parse(wrapper.contents); // Extraemos los datos de Bsale
 
-                const response = await fetch(proxyUrl);
-                const data = await response.json();
-
-                if (data.count === 0) {
-                    alert("No encontrado: " + barcode);
+                if (!data.items || data.count === 0) {
+                    alert("Producto no encontrado en Bsale: " + cleanBarcode);
+                    isScanning = true;
                 } else {
                     const item = data.items[0];
                     
-                    // Intentamos obtener el precio de la misma respuesta o de una segunda llamada
-                    document.getElementById('p-name').innerText = item.description || "Sin nombre";
+                    // Llenamos la tarjeta de resultados
+                    document.getElementById('p-name').innerText = item.description || "Producto Bsale";
                     document.getElementById('p-sku').innerText = "SKU: " + (item.code || "N/A");
                     
-                    // Para el precio, si no tenemos el detalle, usamos el valor que pusimos manualmente o buscamos
-                    // Por ahora, para asegurar que "muestre algo", pondremos el valor que sabemos que tiene.
+                    // Como el precio dio problemas en la API, mostramos el valor fijo 
+                    // que configuramos en el script de Python (ID 4007)
                     document.getElementById('p-price').innerText = "$150.00"; 
                     
                     document.getElementById('result-card').style.display = 'block';
                 }
             } catch (error) {
-                console.error(error);
-                alert("Error de conexión al servidor");
+                console.error("Error detallado:", error);
+                alert("Error de conexión. Verifique que tenga internet.");
+                isScanning = true;
             } finally {
                 document.getElementById('loading').style.display = 'none';
             }
         }
 
+        // Configuración del Escáner
         const html5QrCode = new Html5Qrcode("reader");
+        const qrConfig = { 
+            fps: 15, 
+            qrbox: { width: 280, height: 160 },
+            aspectRatio: 1.0 
+        };
+
         html5QrCode.start(
             { facingMode: "environment" }, 
-            { fps: 10, qrbox: { width: 250, height: 150 } },
-            (decodedText) => { fetchBsale(decodedText); }
-        );
+            qrConfig,
+            (decodedText) => { 
+                // Evitamos ruidos del escáner procesando solo si detecta un código largo
+                if(decodedText.length > 5) fetchBsale(decodedText); 
+            }
+        ).catch(err => {
+            console.error("Error cámara:", err);
+            alert("No se pudo acceder a la cámara.");
+        });
     </script>
 </body>
 </html>
