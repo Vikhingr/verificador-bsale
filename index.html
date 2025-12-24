@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scanner Bsale Móvil</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        body { font-family: sans-serif; background: #1a1a1a; color: white; margin: 0; text-align: center; }
+        #reader { width: 100%; max-width: 500px; margin: auto; background: black; }
+        .result-card { 
+            position: fixed; bottom: 0; left: 0; right: 0; 
+            background: white; color: #333; padding: 20px; 
+            border-radius: 20px 20px 0 0; display: none;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
+            z-index: 100;
+        }
+        .product-img { width: 120px; height: 120px; object-fit: contain; }
+        .price { font-size: 2.5rem; color: #28a745; font-weight: bold; }
+        #close-btn { background: #ff4444; color: white; border: none; padding: 10px; border-radius: 5px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <h2>Escáner de Precios</h2>
+    <div id="reader"></div>
+
+    <div id="result-card" class="result-card">
+        <img id="p-img" class="product-img" src="">
+        <h3 id="p-name"></h3>
+        <div id="p-price" class="price"></div>
+        <div id="p-stock"></div>
+        <button id="close-btn" onclick="document.getElementById('result-card').style.display='none'">Cerrar</button>
+    </div>
+
+    <script>
+        const TOKEN = '684b8921739361288e129f1e4f6848ef60252217';
+        const BASE_URL = 'https://api.bsale.com.mx/v1/';
+
+        async function fetchBsale(barcode) {
+            try {
+                // 1. Buscar variante
+                const resVar = await fetch(`${BASE_URL}variants.json?barcode=${barcode}&expand=[product]`, {
+                    headers: { 'access_token': TOKEN, 'Accept': 'application/json' }
+                });
+                const dataVar = await resVar.json();
+                if (dataVar.count === 0) return alert("No encontrado");
+
+                const item = dataVar.items[0];
+
+                // 2. Buscar precio y stock
+                const resDet = await fetch(`${BASE_URL}variants/${item.id}/details.json`, {
+                    headers: { 'access_token': TOKEN, 'Accept': 'application/json' }
+                });
+                const dataDet = await resDet.json();
+                const totalStock = dataDet.items.reduce((acc, curr) => acc + curr.stock, 0);
+                const precio = dataDet.items[0].variantValueWithTaxes;
+
+                // Mostrar datos
+                document.getElementById('p-img').src = item.urlImg || 'https://via.placeholder.com/150';
+                document.getElementById('p-name').innerText = item.description;
+                document.getElementById('p-price').innerText = `$${precio.toLocaleString('es-MX')}`;
+                document.getElementById('p-stock').innerText = `Stock: ${totalStock}`;
+                document.getElementById('result-card').style.display = 'block';
+
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        // Configuración del Scanner
+        const html5QrCode = new Html5Qrcode("reader");
+        const config = { fps: 10, qrbox: { width: 250, height: 150 } };
+
+        // Iniciar cámara trasera
+        html5QrCode.start({ facingMode: "environment" }, config, (decodedText) => {
+            // Cuando detecta un código:
+            fetchBsale(decodedText);
+        });
+    </script>
+</body>
+</html>
