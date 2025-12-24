@@ -7,30 +7,40 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         body { font-family: sans-serif; background: #1a1a1a; color: white; margin: 0; text-align: center; }
-        #reader { width: 100%; max-width: 500px; margin: auto; background: black; }
+        #reader { width: 100%; max-width: 500px; margin: auto; background: black; border-bottom: 2px solid #007bff; }
         .result-card { 
             position: fixed; bottom: 0; left: 0; right: 0; 
-            background: white; color: #333; padding: 20px; 
-            border-radius: 20px 20px 0 0; display: none;
-            box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
+            background: white; color: #333; padding: 25px; 
+            border-radius: 25px 25px 0 0; display: none;
+            box-shadow: 0 -10px 30px rgba(0,0,0,0.5);
             z-index: 100;
         }
-        .product-img { width: 120px; height: 120px; object-fit: contain; }
-        .price { font-size: 2.5rem; color: #28a745; font-weight: bold; }
-        #close-btn { background: #007bff; color: white; border: none; padding: 15px 30px; border-radius: 10px; margin-top: 15px; font-size: 1rem; cursor: pointer; }
+        .product-img { width: 100px; height: 100px; object-fit: contain; margin-bottom: 10px; }
+        .price { font-size: 3rem; color: #28a745; font-weight: bold; margin: 10px 0; }
+        #close-btn { 
+            background: #007bff; color: white; border: none; 
+            padding: 15px 40px; border-radius: 12px; 
+            font-size: 1.1rem; font-weight: bold; cursor: pointer;
+            width: 100%; margin-top: 10px;
+        }
+        .info-label { color: #666; font-size: 0.9rem; margin-top: 5px; }
     </style>
 </head>
 <body>
 
-    <h2 style="padding: 10px;">Escáner de Precios</h2>
+    <div style="padding: 15px;">
+        <h2 style="margin: 0; color: #007bff;">Verificador de Precios</h2>
+        <p style="font-size: 0.8rem; opacity: 0.7;">Apunta al código de barras del producto</p>
+    </div>
+
     <div id="reader"></div>
 
     <div id="result-card" class="result-card">
-        <img id="p-img" class="product-img" src="">
-        <h3 id="p-name"></h3>
-        <div id="p-price" class="price"></div>
-        <div id="p-stock" style="color: #666; margin-bottom: 10px;"></div>
-        <button id="close-btn" onclick="cerrarCard()">Escanear otro</button>
+        <img id="p-img" class="product-img" src="https://via.placeholder.com/150">
+        <h3 id="p-name" style="margin: 0;">Cargando...</h3>
+        <div id="p-price" class="price">$0.00</div>
+        <div id="p-stock" class="info-label"></div>
+        <button id="close-btn" onclick="cerrarCard()">LISTO / VOLVER A ESCANEAR</button>
     </div>
 
     <script>
@@ -40,7 +50,7 @@
 
         function cerrarCard() {
             document.getElementById('result-card').style.display = 'none';
-            // Damos un pequeño respiro antes de volver a permitir el escaneo
+            // Pausa de 1 segundo para evitar re-escaneo inmediato
             setTimeout(() => { isScanning = true; }, 1000);
         }
 
@@ -48,85 +58,75 @@
             if (!isScanning) return;
             isScanning = false; 
 
-            console.log("Buscando barcode:", barcode);
+            const cleanBarcode = barcode.trim();
+            console.log("Consultando Bsale:", cleanBarcode);
 
             try {
-                // 1. Buscar variante (Sin status=1 para mayor compatibilidad)
-                const resVar = await fetch(`${BASE_URL}variants.json?barcode=${barcode.trim()}`, {
+                // 1. Buscamos la variante (Búsqueda abierta para evitar falsos negativos)
+                const resVar = await fetch(`${BASE_URL}variants.json?barcode=${cleanBarcode}`, {
                     headers: { 'access_token': TOKEN, 'Accept': 'application/json' }
                 });
                 const dataVar = await resVar.json();
 
                 if (dataVar.count === 0) {
-                    alert("No encontrado en Bsale. El código leído fue: " + barcode);
+                    alert("No encontrado en Bsale: " + cleanBarcode);
                     isScanning = true;
                     return;
                 }
 
                 const item = dataVar.items[0];
 
-                // 2. Buscar precio y stock
-                const resDet = await fetch(`${BASE_URL}variants/${item.id}/details.json`, {
+                // 2. Buscamos el precio en la lista de valores
+                const resPrice = await fetch(`${BASE_URL}variants/${item.id}/values.json`, {
                     headers: { 'access_token': TOKEN, 'Accept': 'application/json' }
                 });
-                const dataDet = await resDet.json();
+                const dataPrice = await resPrice.json();
                 
-                // Calculamos stock total y precio
-                const totalStock = dataDet.items ? dataDet.items.reduce((acc, curr) => acc + curr.stock, 0) : 0;
-                const precio = dataDet.items && dataDet.items.length > 0 ? dataDet.items[0].variantValueWithTaxes : 0;
+                let precioFinal = 0;
+                if (dataPrice.count > 0) {
+                    // Tomamos el primer precio que encuentre la API
+                    precioFinal = dataPrice.items[0].value;
+                }
 
-                // Mostrar datos
-                document.getElementById('p-img').src = item.urlImg || 'https://via.placeholder.com/150';
-                document.getElementById('p-name').innerText = item.description || "Sin nombre";
-                document.getElementById('p-price').innerText = `$${precio.toLocaleString('es-MX', {minimumFractionDigits: 2})}`;
-                document.getElementById('p-stock').innerText = `Stock Disponible: ${totalStock}`;
+                // 3. Actualizamos la interfaz
+                document.getElementById('p-name').innerText = item.description || "Producto sin nombre";
+                document.getElementById('p-price').innerText = `$${Number(precioFinal).toLocaleString('es-MX', {minimumFractionDigits: 2})}`;
+                document.getElementById('p-stock').innerText = `Código: ${cleanBarcode} | ID: ${item.id}`;
+                
+                // Mostrar tarjeta de resultados
                 document.getElementById('result-card').style.display = 'block';
 
             } catch (e) {
-                console.error("Error API:", e);
-                alert("Error al conectar con Bsale");
+                console.error("Error en API:", e);
+                alert("Error de comunicación con Bsale");
                 isScanning = true;
             }
         }
 
-        // Configuración del Scanner mejorada
+        // Configuración del Scanner mejorada para códigos de barras comerciales
         const html5QrCode = new Html5Qrcode("reader");
         const config = { 
-    fps: 20, // Más frames por segundo para captar mejor el enfoque
-    qrbox: { width: 350, height: 150 }, // Cuadro alargado tipo código de barras
-    aspectRatio: 1.0,
-    // RESTRICCIÓN DE FORMATOS: Solo lee códigos de barras comunes
-    formatsToSupport: [ 
-        Html5QrcodeSupportedFormats.EAN_13, 
-        Html5QrcodeSupportedFormats.UPC_A,
-        Html5QrcodeSupportedFormats.UPC_E,
-        Html5QrcodeSupportedFormats.CODE_128 
-    ]
-};
+            fps: 15, 
+            qrbox: { width: 350, height: 180 }, // Caja optimizada para barras
+            aspectRatio: 1.0,
+            formatsToSupport: [ 
+                Html5QrcodeSupportedFormats.EAN_13, 
+                Html5QrcodeSupportedFormats.UPC_A,
+                Html5QrcodeSupportedFormats.CODE_128 
+            ]
+        };
 
-// Iniciar cámara con ajustes de video
-html5QrCode.start(
-    { facingMode: "environment" }, 
-    config, 
-    (decodedText) => {
-        // VALIDACIÓN: Solo procesar si tiene longitud de código de barras real
-        const cleanText = decodedText.trim();
-        if (cleanText.length >= 12 && cleanText.length <= 14) {
-            fetchBsale(cleanText);
-        } else {
-            console.log("Lectura descartada por longitud inválida:", cleanText);
-        }
-    }
-);
-
+        // Iniciar cámara
         html5QrCode.start(
             { facingMode: "environment" }, 
             config, 
             (decodedText) => {
-                fetchBsale(decodedText);
+                // Solo procesamos si el texto parece un código de barras real (más de 10 dígitos)
+                if (decodedText.length >= 10) {
+                    fetchBsale(decodedText);
+                }
             }
         );
     </script>
 </body>
 </html>
-
