@@ -11,7 +11,7 @@
         
         header { width: 100%; padding: 15px 0; text-align: center; background: #1f1f1f; border-bottom: 2px solid var(--primary); margin-bottom: 20px; }
         
-        /* Contenedor del Escáner corregido */
+        /* Contenedor del Escáner */
         #reader-container { 
             width: 90%; max-width: 350px; position: relative; 
             border-radius: 20px; overflow: hidden; border: 4px solid #333;
@@ -21,7 +21,7 @@
 
         #status { margin-top: 15px; color: #888; font-size: 0.85rem; font-weight: bold; letter-spacing: 1px; }
 
-        /* Tarjeta de Resultados */
+        /* Tarjeta de Resultados (Popup) */
         .result-card { 
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9);
             width: 85%; max-width: 400px; background: white; color: #333; 
@@ -37,7 +37,7 @@
         button { 
             background: var(--primary); color: white; border: none; padding: 18px; 
             width: 100%; border-radius: 12px; font-weight: bold; font-size: 1.1rem;
-            cursor: pointer; active { background: #0056b3; }
+            cursor: pointer;
         }
 
         #overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.8); display:none; z-index: 999; }
@@ -55,7 +55,7 @@
 
     <div id="overlay"></div>
     <div id="result-card" class="result-card">
-        <div id="p-name" class="p-name">Cargando...</div>
+        <div id="p-name" class="p-name">Buscando...</div>
         <div id="p-price" class="price">$150.00</div>
         <div id="p-sku" class="p-sku"></div>
         <button onclick="reiniciar()">SIGUIENTE PRODUCTO</button>
@@ -82,13 +82,13 @@
         }
 
         async function buscarEnBsale(codigoRaw) {
-            // Limpieza: quitamos espacios y ceros iniciales
-            const codigo = codigoRaw.trim().replace(/^0+/, ''); 
-            document.getElementById('status').innerText = "BUSCANDO: " + codigo;
+            // Limpiamos el código detectado
+            const codigoBuscado = codigoRaw.trim();
+            document.getElementById('status').innerText = "PROCESANDO: " + codigoBuscado;
             
-            // Cache Buster para evitar resultados viejos
+            // MÉTODO DE FUERZA BRUTA: Traemos los últimos 50 productos de tu cuenta
             const cacheBuster = new Date().getTime();
-            const bsaleUrl = `https://api.bsale.com.mx/v1/variants.json?barcode=${codigo}&access_token=${TOKEN}&t=${cacheBuster}`;
+            const bsaleUrl = `https://api.bsale.com.mx/v1/variants.json?limit=50&direction=desc&access_token=${TOKEN}&t=${cacheBuster}`;
             const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(bsaleUrl)}`;
 
             try {
@@ -96,55 +96,34 @@
                 const wrap = await res.json();
                 const data = JSON.parse(wrap.contents);
 
-                if (data.count > 0) {
-                    mostrarResultado(data.items[0]);
-                } else {
-                    // Si falla el buscador oficial, intentamos búsqueda por lista (Súper seguro)
-                    intentarBusquedaManual(codigo);
-                }
-            } catch (e) {
-                alert("Error de red. Usa datos móviles.");
-                reiniciar();
-            }
-        }
-
-        async function intentarBusquedaManual(codigo) {
-            const cacheBuster = new Date().getTime();
-            const bsaleUrl = `https://api.bsale.com.mx/v1/variants.json?limit=30&direction=desc&access_token=${TOKEN}&t=${cacheBuster}`;
-            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(bsaleUrl)}`;
-            
-            try {
-                const res = await fetch(proxyUrl);
-                const wrap = await res.json();
-                const data = JSON.parse(wrap.contents);
-                
-                // Buscamos coincidencia parcial o exacta en los últimos 30 productos
-                const item = data.items.find(i => String(i.barcode).includes(codigo));
+                // Buscamos manualmente en la lista ignorando si son números o letras en Bsale
+                const item = data.items.find(i => {
+                    const bsaleBarcode = String(i.barcode || "").trim();
+                    return bsaleBarcode === codigoBuscado;
+                });
 
                 if (item) {
-                    mostrarResultado(item);
+                    playBeep();
+                    document.getElementById('p-name').innerText = item.description;
+                    document.getElementById('p-sku').innerText = "ID: " + item.id + " | SKU: " + (item.code || "S/N");
+                    
+                    document.getElementById('overlay').style.display = 'block';
+                    document.getElementById('result-card').classList.add('active');
+                    document.getElementById('status').innerText = "¡ENCONTRADO!";
                 } else {
-                    alert("No registrado en Bsale: " + codigo);
+                    alert("CÓDIGO NO VINCULADO EN LOS ÚLTIMOS 50: " + codigoBuscado + "\n\nVerifica que el código de barras esté bien escrito en el panel de Bsale.");
                     reiniciar();
                 }
             } catch (e) {
+                alert("ERROR DE CONEXIÓN: Verifica tus datos móviles.");
                 reiniciar();
             }
-        }
-
-        function mostrarResultado(item) {
-            playBeep();
-            document.getElementById('p-name').innerText = item.description;
-            document.getElementById('p-sku').innerText = "ID: " + item.id + " | SKU: " + (item.code || "S/N");
-            document.getElementById('overlay').style.display = 'block';
-            document.getElementById('result-card').classList.add('active');
-            document.getElementById('status').innerText = "¡ENCONTRADO!";
         }
 
         function reiniciar() {
             document.getElementById('overlay').style.display = 'none';
             document.getElementById('result-card').classList.remove('active');
-            document.getElementById('status').innerText = "ESCANEANDO CÓDIGO...";
+            document.getElementById('status').innerText = "ESCANEANDO CÓDIGO... ";
             iniciarScanner();
         }
 
