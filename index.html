@@ -3,128 +3,106 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bsale Scanner Ultimate</title>
+    <title>Bsale Scanner PRO</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         :root { --blue: #007bff; --green: #28a745; --dark: #121212; }
         body { font-family: sans-serif; background: var(--dark); color: white; margin: 0; text-align: center; }
-        
-        header { padding: 15px; background: #1f1f1f; border-bottom: 2px solid var(--blue); }
-        
-        /* Contenedor Cámara */
-        #reader-wrapper { width: 90%; max-width: 350px; margin: 15px auto; border: 3px solid #333; border-radius: 15px; overflow: hidden; position: relative; }
-        #reader { width: 100%; }
-
-        /* Consola de Diagnóstico (Letras Verdes) */
-        #debug-log { 
-            background: #000; color: #0f0; font-family: monospace; font-size: 11px; 
-            height: 50px; overflow-y: auto; margin: 10px 5%; padding: 8px; 
-            text-align: left; border: 1px solid #444; border-radius: 5px;
-        }
-
-        /* Botón Manual */
-        .btn-manual { background: none; border: 1px solid var(--blue); color: var(--blue); padding: 10px; border-radius: 8px; margin-bottom: 10px; cursor: pointer; }
-
-        /* Tarjeta de Resultado */
-        .card { 
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 85%; max-width: 380px; background: white; color: black; 
-            padding: 25px; border-radius: 20px; display: none; z-index: 1000; 
-            box-shadow: 0 10px 60px rgba(0,0,0,1); text-align: center;
-        }
-        .price { font-size: 3.8rem; color: var(--green); font-weight: 900; margin: 10px 0; }
-        
+        header { padding: 15px; background: #1f1f1f; border-bottom: 2px solid var(--blue); margin-bottom: 10px; }
+        #reader-wrapper { width: 92%; max-width: 350px; margin: auto; border: 3px solid #333; border-radius: 15px; overflow: hidden; }
+        #debug-log { background: #000; color: #0f0; font-family: monospace; font-size: 11px; height: 80px; overflow-y: auto; margin: 10px 4%; padding: 8px; text-align: left; border: 1px solid #444; border-radius: 5px; }
+        .card { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; max-width: 380px; background: white; color: black; padding: 25px; border-radius: 20px; display: none; z-index: 1000; box-shadow: 0 0 50px rgba(0,0,0,1); }
+        .price { font-size: 4rem; color: var(--green); font-weight: 900; margin: 5px 0; }
         .btn-main { background: var(--blue); color: white; border: none; padding: 18px; width: 100%; border-radius: 12px; font-weight: bold; font-size: 1.2rem; cursor: pointer; }
-        
         #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; z-index: 999; }
+        .btn-manual { background: #333; color: #fff; border: 1px solid #555; padding: 10px 20px; border-radius: 8px; margin: 10px; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <header><strong>VERIFICADOR DE PRECIOS</strong></header>
+    <header><strong>VERIFICADOR BSALE</strong></header>
     
-    <div id="reader-wrapper">
-        <div id="reader"></div>
-    </div>
+    <div id="reader-wrapper"><div id="reader"></div></div>
 
-    <button class="btn-manual" onclick="buscarManual()">⌨️ INGRESAR CÓDIGO MANUAL</button>
+    <button class="btn-manual" onclick="buscarManual()">⌨️ TECLEAR CÓDIGO</button>
 
     <div id="debug-log">Iniciando sistema...</div>
 
     <div id="overlay"></div>
     <div id="card" class="card">
-        <div id="p-name" style="font-size: 1.5rem; font-weight: bold; line-height: 1.2;"></div>
+        <div id="p-name" style="font-size: 1.5rem; font-weight: bold;"></div>
         <div id="p-price" class="price">$150.00</div>
         <div id="p-sku" style="color: #777; font-size: 0.9rem; margin-bottom: 20px;"></div>
-        <button class="btn-main" onclick="reiniciar()">ESCANEAR SIGUIENTE</button>
+        <button class="btn-main" onclick="reiniciar()">CONTINUAR</button>
     </div>
 
     <script>
         const TOKEN = '684b8921739361288e129f1e4f6848ef60252217';
         const scanner = new Html5Qrcode("reader");
 
-        const log = (msg) => { 
+        function log(msg) {
             const d = document.getElementById('debug-log');
             d.innerHTML += "> " + msg + "<br>";
             d.scrollTop = d.scrollHeight;
-        };
+        }
 
-        // Función de búsqueda (La misma para cámara y manual)
         async function buscar(codigo) {
             if(!codigo) return;
             log("Buscando: " + codigo);
             
-            // Usamos corsproxy.io que es el más estable actualmente
-            const target = `https://api.bsale.com.mx/v1/variants.json?barcode=${codigo.trim()}&access_token=${TOKEN}`;
-            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(target)}`;
+            // Usamos un proxy que suele ser más permisivo con Bsale: ThingProxy
+            // O un puente directo vía AllOrigins pero con estructura simplificada
+            const bsaleUrl = `https://api.bsale.com.mx/v1/variants.json?barcode=${codigo.trim()}&access_token=${TOKEN}`;
+            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(bsaleUrl)}`;
 
             try {
-                const res = await fetch(proxyUrl);
-                if (!res.ok) throw new Error("Servidor no responde");
+                const response = await fetch(proxyUrl);
+                if (!response.ok) throw new Error("Error de conexión al servidor");
                 
-                const data = await res.json();
-                log("Respuesta recibida. Coincidencias: " + data.count);
+                const jsonWrapper = await response.json();
+                
+                // IMPORTANTE: AllOrigins a veces devuelve string, a veces objeto
+                const data = typeof jsonWrapper.contents === 'string' 
+                             ? JSON.parse(jsonWrapper.contents) 
+                             : jsonWrapper.contents;
 
-                if (data.count > 0) {
+                log("Respuesta recibida correctamente.");
+
+                if (data && data.count > 0) {
                     const item = data.items[0];
                     document.getElementById('p-name').innerText = item.description;
-                    document.getElementById('p-sku').innerText = "SKU: " + (item.code || "N/A");
-                    // Mostramos la tarjeta
+                    document.getElementById('p-sku').innerText = "SKU: " + (item.code || "S/N");
+                    
                     document.getElementById('card').style.display = 'block';
                     document.getElementById('overlay').style.display = 'block';
                 } else {
-                    log("Error: El código no existe en Bsale.");
-                    alert("No registrado: " + codigo);
+                    log("El código no existe en Bsale.");
+                    alert("No encontrado: " + codigo);
                     reiniciar();
                 }
-            } catch (e) {
-                log("FALLO DE RED: " + e.message);
-                alert("Error de conexión. Prueba apagar el WiFi.");
+            } catch (error) {
+                log("FALLA: " + error.message);
+                alert("Error de Conexión. Intenta de nuevo en unos segundos.");
                 reiniciar();
             }
         }
 
         function buscarManual() {
-            const cod = prompt("Ingresa el código de barras:");
+            const cod = prompt("Escribe el código:");
             if(cod) buscar(cod);
         }
 
         function reiniciar() {
             document.getElementById('card').style.display = 'none';
             document.getElementById('overlay').style.display = 'none';
-            log("Escáner listo.");
+            log("Escáner reiniciado.");
             iniciar();
         }
 
         function iniciar() {
-            scanner.start(
-                { facingMode: "environment" }, 
-                { fps: 15, qrbox: { width: 250, height: 150 } },
-                (text) => {
-                    scanner.stop();
-                    buscar(text);
-                }
-            ).catch(err => log("Cámara no lista."));
+            scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, 
+                (t) => { scanner.stop(); buscar(t); }
+            ).catch(e => log("Cámara no activa."));
         }
 
         iniciar();
