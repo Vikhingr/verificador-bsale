@@ -3,42 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bsale Verificador Final</title>
+    <title>Bsale Scanner Oficial</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        :root { --primary: #007bff; --success: #28a745; --dark: #121212; }
-        body { font-family: -apple-system, sans-serif; background: var(--dark); color: white; margin: 0; text-align: center; }
-        header { padding: 15px; background: #1f1f1f; border-bottom: 2px solid var(--primary); margin-bottom: 10px; }
-        
-        #reader-wrapper { width: 92%; max-width: 350px; margin: auto; border: 3px solid #333; border-radius: 20px; overflow: hidden; }
-        #debug-log { background: #000; color: #0f0; font-family: monospace; font-size: 11px; height: 70px; overflow-y: auto; margin: 10px 4%; padding: 8px; text-align: left; border: 1px solid #444; border-radius: 5px; }
-
-        .card { 
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 85%; max-width: 400px; background: white; color: black; 
-            padding: 30px; border-radius: 25px; display: none; z-index: 1000; 
-            box-shadow: 0 0 60px rgba(0,0,0,1); text-align: center;
-        }
-        .price { font-size: 4.2rem; color: var(--success); font-weight: 900; margin: 10px 0; }
-        .btn-main { background: var(--primary); color: white; border: none; padding: 18px; width: 100%; border-radius: 12px; font-weight: bold; font-size: 1.2rem; cursor: pointer; }
-        
-        #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; z-index: 999; }
+        :root { --blue: #007bff; --green: #28a745; --dark: #121212; }
+        body { font-family: sans-serif; background: var(--dark); color: white; margin: 0; text-align: center; }
+        header { padding: 15px; background: #1f1f1f; border-bottom: 2px solid var(--blue); }
+        #reader-wrapper { width: 92%; max-width: 350px; margin: 20px auto; border-radius: 15px; overflow: hidden; border: 3px solid #333; }
+        #debug-log { background: #000; color: #0f0; font-family: monospace; font-size: 11px; height: 70px; overflow-y: auto; margin: 10px; padding: 10px; text-align: left; border: 1px solid #444; }
+        .card { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; max-width: 400px; background: white; color: black; padding: 30px; border-radius: 25px; display: none; z-index: 1000; box-shadow: 0 0 50px #000; }
+        .price { font-size: 3.5rem; color: var(--green); font-weight: 900; margin: 10px 0; }
+        button { background: var(--blue); color: white; border: none; padding: 18px; width: 100%; border-radius: 12px; font-weight: bold; font-size: 1.2rem; cursor: pointer; }
+        #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; z-index: 999; }
     </style>
 </head>
 <body>
 
-    <header><strong>VERIFICADOR BSALE MX</strong></header>
-    
+    <header><strong>VERIFICADOR OFICIAL BSALE</strong></header>
     <div id="reader-wrapper"><div id="reader"></div></div>
-
     <div id="debug-log">Listo para escanear...</div>
 
     <div id="overlay"></div>
     <div id="card" class="card">
-        <div id="p-name" style="font-size: 1.6rem; font-weight: bold; line-height: 1.2;"></div>
+        <h2 id="p-name" style="margin:0; font-size: 1.4rem;"></h2>
         <div id="p-price" class="price"></div>
-        <div id="p-sku" style="color: #777; font-size: 0.9rem; margin-bottom: 20px;"></div>
-        <button class="btn-main" onclick="reiniciar()">CONTINUAR</button>
+        <p id="p-sku" style="color:#666; margin-bottom: 20px; font-family: monospace;"></p>
+        <button onclick="reiniciar()">ESCANEAR OTRO</button>
     </div>
 
     <script>
@@ -51,14 +41,13 @@
             d.scrollTop = d.scrollHeight;
         }
 
-        async function buscar(codigoRaw) {
-            if(!codigoRaw) return;
-            const cod = codigoRaw.trim();
-            log("Buscando: " + cod);
+        async function buscar(codigo) {
+            const cod = codigo.trim();
+            log("Buscando barcode: " + cod);
             
-            // USANDO barCode (con C mayúscula) como descubriste
-            const bsaleUrl = `https://api.bsale.com.mx/v1/variants.json?barCode=${cod}&access_token=${TOKEN}`;
-            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(bsaleUrl)}`;
+            // Según documentación: parámetro de búsqueda es 'barcode'
+            const targetUrl = `https://api.bsale.com.mx/v1/variants.json?barcode=${cod}&access_token=${TOKEN}`;
+            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
 
             try {
                 const response = await fetch(proxyUrl);
@@ -66,53 +55,53 @@
                 const data = JSON.parse(wrap.contents);
 
                 if (data.count > 0) {
-                    log("¡Éxito! Producto encontrado.");
                     const item = data.items[0];
+                    log("¡Producto encontrado!");
                     
                     document.getElementById('p-name').innerText = item.description;
-                    // Mostramos el precio neto o de lista según prefieras
+                    // Mostramos netPrice según los atributos de tu lista
                     document.getElementById('p-price').innerText = "$" + (item.netPrice || "0.00");
-                    document.getElementById('p-sku').innerText = "SKU: " + (item.code || "S/N");
+                    document.getElementById('p-sku').innerText = "SKU: " + (item.code || "N/A");
                     
                     document.getElementById('card').style.display = 'block';
                     document.getElementById('overlay').style.display = 'block';
                 } else {
-                    log("No hallado con barCode. Intentando con SKU...");
-                    // Intento de respaldo buscando por el campo de Código (SKU)
+                    log("No hallado por barcode. Intentando por code (SKU)...");
                     await buscarPorSKU(cod);
                 }
-            } catch (error) {
-                log("Error de red: " + error.message);
+            } catch (e) {
+                log("Error: " + e.message);
                 reiniciar();
             }
         }
 
         async function buscarPorSKU(cod) {
-            const bsaleUrl = `https://api.bsale.com.mx/v1/variants.json?code=${cod}&access_token=${TOKEN}`;
-            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(bsaleUrl)}`;
+            // Según documentación: parámetro de búsqueda es 'code'
+            const targetUrl = `https://api.bsale.com.mx/v1/variants.json?code=${cod}&access_token=${TOKEN}`;
+            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
             
-            const res = await fetch(proxyUrl);
-            const wrap = await res.json();
-            const data = JSON.parse(wrap.contents);
+            try {
+                const res = await fetch(proxyUrl);
+                const wrap = await res.json();
+                const data = JSON.parse(wrap.contents);
 
-            if (data.count > 0) {
-                log("Encontrado por SKU.");
-                const item = data.items[0];
-                document.getElementById('p-name').innerText = item.description;
-                document.getElementById('p-price').innerText = "$" + (item.netPrice || "0.00");
-                document.getElementById('p-sku').innerText = "SKU: " + item.code;
-                document.getElementById('card').style.display = 'block';
-                document.getElementById('overlay').style.display = 'block';
-            } else {
-                alert("Código " + cod + " no existe en Bsale.");
-                reiniciar();
-            }
+                if (data.count > 0) {
+                    const item = data.items[0];
+                    document.getElementById('p-name').innerText = item.description;
+                    document.getElementById('p-price').innerText = "$" + (item.netPrice || "0.00");
+                    document.getElementById('p-sku').innerText = "SKU: " + item.code;
+                    document.getElementById('card').style.display = 'block';
+                    document.getElementById('overlay').style.display = 'block';
+                } else {
+                    alert("Código " + cod + " no encontrado en Bsale.");
+                    reiniciar();
+                }
+            } catch (e) { reiniciar(); }
         }
 
         function reiniciar() {
             document.getElementById('card').style.display = 'none';
             document.getElementById('overlay').style.display = 'none';
-            log("Esperando código...");
             iniciar();
         }
 
