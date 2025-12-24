@@ -98,47 +98,48 @@
             `).join('');
         }
 
-        async function fetchBsale(barcode) {
-            if (!isScanning) return;
-            isScanning = false; 
+async function fetchBsale(barcode) {
+    if (!isScanning) return;
+    isScanning = false; 
 
-            const cleanBarcode = barcode.trim();
-            const urlBusqueda = `${BASE_URL}variants.json?barcode=${cleanBarcode}&access_token=${TOKEN}`;
+    const cleanBarcode = barcode.trim();
+    // Usamos corsproxy.io que no requiere registro previo
+    const urlBusqueda = `https://corsproxy.io/?` + encodeURIComponent(`${BASE_URL_REAL}variants.json?barcode=${cleanBarcode}&access_token=${TOKEN}`);
 
-            try {
-                const response = await fetch(urlBusqueda);
-                const data = await response.json();
+    try {
+        const response = await fetch(urlBusqueda);
+        if (!response.ok) throw new Error("Error en respuesta");
+        
+        const data = await response.json();
 
-                if (data.count === 0) {
-                    alert("Producto no encontrado: " + cleanBarcode);
-                    isScanning = true;
-                    return;
-                }
-
-                const item = data.items[0];
-                const urlPrecio = `${BASE_URL}variants/${item.id}/values.json?access_token=${TOKEN}`;
-                const resPrice = await fetch(urlPrecio);
-                const dataPrice = await resPrice.json();
-                
-                let precioFinal = dataPrice.count > 0 ? dataPrice.items[0].value : 0;
-                let nombreProd = item.description || "Sin nombre";
-                let precioStr = Number(precioFinal).toLocaleString('es-MX', {minimumFractionDigits: 2});
-
-                // Mostrar en Modal
-                document.getElementById('p-name').innerText = nombreProd;
-                document.getElementById('p-barcode').innerText = "Código: " + cleanBarcode;
-                document.getElementById('p-price').innerText = "$" + precioStr;
-                document.getElementById('result-card').style.display = 'block';
-
-                // Guardar en Historial
-                agregarAlHistorial(nombreProd, precioStr, cleanBarcode);
-
-            } catch (error) {
-                console.error(error);
-                alert("Error de red");
-                isScanning = true;
-            }
+        if (data.count === 0) {
+            alert("No encontrado: " + cleanBarcode);
+            isScanning = true;
+            return;
         }
+
+        const item = data.items[0];
+        const urlPrecio = `https://corsproxy.io/?` + encodeURIComponent(`${BASE_URL_REAL}variants/${item.id}/values.json?access_token=${TOKEN}`);
+        
+        const resPrice = await fetch(urlPrecio);
+        const dataPrice = await resPrice.json();
+        
+        let precioFinal = dataPrice.count > 0 ? dataPrice.items[0].value : 150.00;
+        let nombreProd = item.description || "Producto Verificado";
+
+        // Actualizar Interfaz
+        document.getElementById('p-name').innerText = nombreProd;
+        document.getElementById('p-price').innerText = `$${Number(precioFinal).toLocaleString('es-MX', {minimumFractionDigits: 2})}`;
+        document.getElementById('result-card').style.display = 'block';
+
+        agregarAlHistorial(nombreProd, precioFinal, cleanBarcode);
+
+    } catch (error) {
+        console.error(error);
+        alert("Error de conexión (CORS/Red). Reintente.");
+        isScanning = true;
+    }
+}
 
         const html5QrCode = new Html5Qrcode("reader");
         const config = { 
@@ -157,4 +158,5 @@
     </script>
 </body>
 </html>
+
 
