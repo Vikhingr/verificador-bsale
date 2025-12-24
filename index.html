@@ -2,84 +2,70 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bsale Directo</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        body { font-family: sans-serif; background: #121212; color: white; text-align: center; margin: 0; }
-        header { padding: 15px; background: #1f1f1f; border-bottom: 2px solid #007bff; }
-        #reader { width: 90%; max-width: 350px; margin: 20px auto; border-radius: 15px; overflow: hidden; }
-        #log { background: #000; color: #0f0; font-family: monospace; font-size: 11px; height: 80px; overflow-y: auto; margin: 10px; padding: 10px; text-align: left; }
-        .card { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; background: white; color: black; padding: 30px; border-radius: 20px; display: none; z-index: 1000; }
-        button { background: #007bff; color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; font-weight: bold; }
+        body { font-family: sans-serif; background: #1a1a1a; color: white; text-align: center; margin: 0; padding: 20px; }
+        #reader { width: 100%; max-width: 400px; margin: auto; border-radius: 10px; overflow: hidden; }
+        .result-card { background: white; color: black; padding: 20px; border-radius: 15px; margin-top: 20px; display: none; }
+        .price { font-size: 2.5rem; color: #28a745; font-weight: bold; }
+        #status { color: #888; font-size: 0.8rem; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <header><strong>CONEXIÓN DIRECTA</strong></header>
+    <h2>VERIFICADOR DIRECTO</h2>
     <div id="reader"></div>
-    <div id="log">> Esperando...</div>
+    <div id="status">Iniciando cámara...</div>
 
-    <div id="card" class="card">
-        <h2 id="p-name"></h2>
-        <div id="p-price" style="font-size: 3rem; color: green; font-weight: bold;"></div>
+    <div id="result" class="result-card">
+        <h3 id="p-name"></h3>
+        <div id="p-price" class="price"></div>
         <p id="p-sku"></p>
-        <button onclick="location.reload()">ESCANEAR OTRO</button>
+        <button onclick="location.reload()" style="width:100%; padding:10px; background:#007bff; color:white; border:none; border-radius:5px;">ESCANEAR OTRO</button>
     </div>
 
     <script>
         const TOKEN = '684b8921739361288e129f1e4f6848ef60252217';
         const scanner = new Html5Qrcode("reader");
 
-        function writeLog(msg) {
-            document.getElementById('log').innerHTML += "<br>> " + msg;
-        }
-
-        async function buscar(codigo) {
-            writeLog("Buscando: " + codigo);
+        async function buscarDirecto(codigo) {
+            document.getElementById('status').innerText = "Buscando en Bsale: " + codigo;
             
-            // PETICIÓN DIRECTA SIN PROXY
+            // URL Directa a la API de Bsale México
             const url = `https://api.bsale.com.mx/v1/variants.json?barcode=${codigo.trim()}&access_token=${TOKEN}`;
 
             try {
-                // Intentamos fetch estándar. Si Bsale no tiene CORS abierto, esto fallará.
-                const response = await fetch(url, {
-                    method: 'GET',
-                    headers: { 'Accept': 'application/json' }
-                });
+                const response = await fetch(url);
+                
+                if (!response.ok) throw new Error("Error en respuesta: " + response.status);
 
                 const data = await response.json();
 
                 if (data.count > 0) {
                     const item = data.items[0];
+                    document.getElementById('result').style.display = 'block';
                     document.getElementById('p-name').innerText = item.description;
                     document.getElementById('p-price').innerText = "$" + (item.netPrice || "0.00");
                     document.getElementById('p-sku').innerText = "SKU: " + item.code;
-                    document.getElementById('card').style.display = 'block';
+                    document.getElementById('status').innerText = "¡Encontrado!";
                 } else {
                     alert("No encontrado: " + codigo);
                     location.reload();
                 }
-            } catch (e) {
-                writeLog("ERROR CORS: El navegador bloqueó la conexión directa.");
-                writeLog("Intentando método alternativo...");
-                
-                // MÉTODO 2: Si falla el primero, intentamos con el token en la cabecera
-                try {
-                     const response2 = await fetch(`https://api.bsale.com.mx/v1/variants.json?barcode=${codigo.trim()}`, {
-                        headers: { 'access_token': TOKEN }
-                     });
-                     const data2 = await response2.json();
-                     if(data2.count > 0) mostrar(data2.items[0]);
-                } catch (e2) {
-                    alert("BLOQUEO DE SEGURIDAD: Tu celular no permite conectar directo a Bsale por seguridad (CORS).");
-                }
+            } catch (error) {
+                console.error(error);
+                document.getElementById('status').innerText = "ERROR: " + error.message;
+                alert("BLOQUEO DE NAVEGADOR (CORS): \nTu celular no permite conectar directo a Bsale por seguridad. Esto solo se resuelve usando un Proxy.");
             }
         }
 
-        scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (t) => {
+        scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (decodedText) => {
             scanner.stop();
-            buscar(t);
+            buscarDirecto(decodedText);
+        }).catch(err => {
+            document.getElementById('status').innerText = "Error de cámara: " + err;
         });
     </script>
 </body>
