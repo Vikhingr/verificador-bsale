@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bsale Scanner Oficial</title>
+    <title>Bsale Scanner - Versión Colab</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         :root { --blue: #007bff; --green: #28a745; --dark: #121212; }
         body { font-family: sans-serif; background: var(--dark); color: white; margin: 0; text-align: center; }
         header { padding: 15px; background: #1f1f1f; border-bottom: 2px solid var(--blue); }
         #reader-wrapper { width: 92%; max-width: 350px; margin: 20px auto; border-radius: 15px; overflow: hidden; border: 3px solid #333; }
-        #debug-log { background: #000; color: #0f0; font-family: monospace; font-size: 11px; height: 70px; overflow-y: auto; margin: 10px; padding: 10px; text-align: left; border: 1px solid #444; }
+        #debug-log { background: #000; color: #0f0; font-family: monospace; font-size: 11px; height: 100px; overflow-y: auto; margin: 10px; padding: 10px; text-align: left; border: 1px solid #444; }
         .card { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; max-width: 400px; background: white; color: black; padding: 30px; border-radius: 25px; display: none; z-index: 1000; box-shadow: 0 0 50px #000; }
         .price { font-size: 3.5rem; color: var(--green); font-weight: 900; margin: 10px 0; }
         button { background: var(--blue); color: white; border: none; padding: 18px; width: 100%; border-radius: 12px; font-weight: bold; font-size: 1.2rem; cursor: pointer; }
@@ -19,9 +19,10 @@
 </head>
 <body>
 
-    <header><strong>VERIFICADOR OFICIAL BSALE</strong></header>
+    <header><strong>BSALE SCANNER PRO</strong></header>
     <div id="reader-wrapper"><div id="reader"></div></div>
-    <div id="debug-log">Listo para escanear...</div>
+    
+    <div id="debug-log">Iniciando sistema...</div>
 
     <div id="overlay"></div>
     <div id="card" class="card">
@@ -43,60 +44,47 @@
 
         async function buscar(codigo) {
             const cod = codigo.trim();
-            log("Buscando barcode: " + cod);
+            log("Escaneado: " + cod);
             
-            // Según documentación: parámetro de búsqueda es 'barcode'
-            const targetUrl = `https://api.bsale.com.mx/v1/variants.json?barcode=${cod}&access_token=${TOKEN}`;
-            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+            // Forzamos la URL exactamente como en Colab
+            const bsaleUrl = `https://api.bsale.com.mx/v1/variants.json?barcode=${cod}&access_token=${TOKEN}`;
+            
+            // Usamos un proxy que NO deforma la URL ni guarda caché
+            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(bsaleUrl)}`;
+
+            log("Llamando a Bsale...");
 
             try {
                 const response = await fetch(proxyUrl);
-                const wrap = await response.json();
-                const data = JSON.parse(wrap.contents);
-
-                if (data.count > 0) {
-                    const item = data.items[0];
-                    log("¡Producto encontrado!");
-                    
-                    document.getElementById('p-name').innerText = item.description;
-                    // Mostramos netPrice según los atributos de tu lista
-                    document.getElementById('p-price').innerText = "$" + (item.netPrice || "0.00");
-                    document.getElementById('p-sku').innerText = "SKU: " + (item.code || "N/A");
-                    
-                    document.getElementById('card').style.display = 'block';
-                    document.getElementById('overlay').style.display = 'block';
-                } else {
-                    log("No hallado por barcode. Intentando por code (SKU)...");
-                    await buscarPorSKU(cod);
+                
+                if (!response.ok) {
+                    throw new Error("Respuesta de red no válida (Error 401 o 404)");
                 }
-            } catch (e) {
-                log("Error: " + e.message);
-                reiniciar();
-            }
-        }
 
-        async function buscarPorSKU(cod) {
-            // Según documentación: parámetro de búsqueda es 'code'
-            const targetUrl = `https://api.bsale.com.mx/v1/variants.json?code=${cod}&access_token=${TOKEN}`;
-            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
-            
-            try {
-                const res = await fetch(proxyUrl);
-                const wrap = await res.json();
-                const data = JSON.parse(wrap.contents);
+                const data = await response.json();
+                log("Respuesta recibida. Items encontrados: " + data.count);
 
                 if (data.count > 0) {
                     const item = data.items[0];
+                    log("✅ ¡Éxito!");
+                    
                     document.getElementById('p-name').innerText = item.description;
                     document.getElementById('p-price').innerText = "$" + (item.netPrice || "0.00");
-                    document.getElementById('p-sku').innerText = "SKU: " + item.code;
+                    // Aquí usamos barCode con C mayúscula para el texto, tal como descubriste
+                    document.getElementById('p-sku').innerText = "BC: " + (item.barCode || "N/A") + " | SKU: " + (item.code || "N/A");
+                    
                     document.getElementById('card').style.display = 'block';
                     document.getElementById('overlay').style.display = 'block';
                 } else {
-                    alert("Código " + cod + " no encontrado en Bsale.");
+                    log("❌ Bsale no encontró el barcode: " + cod);
+                    alert("Código no registrado en Bsale: " + cod);
                     reiniciar();
                 }
-            } catch (e) { reiniciar(); }
+            } catch (e) {
+                log("❌ FALLA DE CONEXIÓN: " + e.message);
+                alert("Error de red. Prueba con datos móviles.");
+                reiniciar();
+            }
         }
 
         function reiniciar() {
@@ -109,7 +97,7 @@
             scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, (t) => {
                 scanner.stop();
                 buscar(t);
-            }).catch(e => log("Error cámara."));
+            }).catch(e => log("Error cámara: " + e));
         }
 
         iniciar();
