@@ -70,7 +70,11 @@
 
         // Configuración del Scanner
         const html5QrCode = new Html5Qrcode("reader");
-        const config = { fps: 10, qrbox: { width: 250, height: 150 } };
+        const config = { 
+    fps: 15, 
+    qrbox: { width: 300, height: 150 }, // Cuadro más ancho para códigos de barras
+    aspectRatio: 1.0 
+};
 
         // Iniciar cámara trasera
         html5QrCode.start({ facingMode: "environment" }, config, (decodedText) => {
@@ -79,4 +83,5 @@
         });
     </script>
 </body>
+
 </html>
