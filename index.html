@@ -3,50 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bsale Verificador v3.0</title>
+    <title>Bsale Scanner Ultra-Sync</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         :root { --blue: #007bff; --green: #28a745; --dark: #121212; }
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--dark); color: white; margin: 0; text-align: center; }
+        body { font-family: sans-serif; background: var(--dark); color: white; margin: 0; text-align: center; }
         header { padding: 15px; background: #1f1f1f; border-bottom: 2px solid var(--blue); }
-        
-        /* Contenedor Cámara */
-        #reader-wrapper { width: 92%; max-width: 350px; margin: 20px auto; border: 3px solid #333; border-radius: 20px; overflow: hidden; }
-        #reader { width: 100%; }
-
-        /* Consola de Diagnóstico */
-        #debug-log { background: #000; color: #0f0; font-family: monospace; font-size: 11px; height: 80px; overflow-y: auto; margin: 10px 4%; padding: 10px; text-align: left; border: 1px solid #444; border-radius: 8px; }
-
-        /* Tarjeta de Resultado */
-        .card { 
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 85%; max-width: 400px; background: white; color: black; 
-            padding: 30px; border-radius: 25px; display: none; z-index: 1000; 
-            box-shadow: 0 0 60px rgba(0,0,0,1); text-align: center;
-        }
-        .price { font-size: 4rem; color: var(--green); font-weight: 900; margin: 10px 0; }
-        .btn-main { background: var(--blue); color: white; border: none; padding: 18px; width: 100%; border-radius: 12px; font-weight: bold; font-size: 1.2rem; cursor: pointer; }
-        
-        #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; z-index: 999; }
-        .btn-manual { background: none; border: 1px solid #555; color: #aaa; padding: 10px; border-radius: 8px; margin-top: 10px; cursor: pointer; }
+        #reader-wrapper { width: 92%; max-width: 350px; margin: 20px auto; border-radius: 15px; overflow: hidden; border: 3px solid #333; }
+        #debug-log { background: #000; color: #0f0; font-family: monospace; font-size: 11px; height: 80px; overflow-y: auto; margin: 10px; padding: 10px; text-align: left; border: 1px solid #444; }
+        .card { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; max-width: 400px; background: white; color: black; padding: 30px; border-radius: 25px; display: none; z-index: 1000; box-shadow: 0 0 50px #000; }
+        .price { font-size: 4rem; color: var(--green); font-weight: 900; }
+        button { background: var(--blue); color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; z-index: 999; }
     </style>
 </head>
 <body>
 
-    <header><strong>VERIFICADOR BSALE MX</strong></header>
-    
+    <header><strong>SYNC BSALE MX</strong></header>
     <div id="reader-wrapper"><div id="reader"></div></div>
-
-    <button class="btn-manual" onclick="buscarManual()">⌨️ INGRESAR CÓDIGO MANUAL</button>
-
-    <div id="debug-log">Estado: Esperando escaneo...</div>
+    <div id="debug-log">Estado: Listo para forzar búsqueda...</div>
 
     <div id="overlay"></div>
     <div id="card" class="card">
-        <div id="p-name" style="font-size: 1.6rem; font-weight: bold; line-height: 1.2;"></div>
-        <div id="p-price" class="price">$150.00</div>
-        <div id="p-sku" style="color: #777; font-size: 0.9rem; margin-bottom: 20px;"></div>
-        <button class="btn-main" onclick="reiniciar()">CONTINUAR</button>
+        <h2 id="p-name"></h2>
+        <div id="p-price" class="price">$0.00</div>
+        <p id="p-sku" style="color:#666;"></p>
+        <button onclick="reiniciar()">ESCANEAR OTRO</button>
     </div>
 
     <script>
@@ -60,82 +42,77 @@
         }
 
         async function buscar(codigoRaw) {
-            if(!codigoRaw) return;
+            const codigo = String(codigoRaw).trim();
+            log("Escaneado: " + codigo);
             
-            // LIMPIEZA TOTAL: Solo dejamos números para evitar errores de formato
-            const codigoBuscado = String(codigoRaw).trim().replace(/[^0-9]/g, '');
-            log("Procesando código: " + codigoBuscado);
-            
-            // Usamos AllOrigins con un timestamp para evitar caché
-            const cacheBuster = new Date().getTime();
-            const bsaleUrl = `https://api.bsale.com.mx/v1/variants.json?limit=50&direction=desc&access_token=${TOKEN}&t=${cacheBuster}`;
-            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(bsaleUrl)}`;
-
-            log("Conectando con Bsale...");
+            // ESTRATEGIA: No le pedimos a Bsale que "busque", le pedimos la LISTA
+            // de los últimos 50 productos modificados. Esto es INSTANTÁNEO.
+            const t = new Date().getTime(); // Anti-caché
+            const targetUrl = `https://api.bsale.com.mx/v1/variants.json?limit=50&direction=desc&access_token=${TOKEN}&t=${t}`;
+            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
 
             try {
                 const response = await fetch(proxyUrl);
                 const wrap = await response.json();
-                const data = typeof wrap.contents === 'string' ? JSON.parse(wrap.contents) : wrap.contents;
+                const data = JSON.parse(wrap.contents);
 
-                if (!data.items || data.items.length === 0) {
-                    log("Error: La lista de Bsale llegó vacía.");
-                    return;
-                }
+                log("Lista recibida. Analizando " + data.items.length + " productos...");
 
-                log("Lista recibida. Comparando...");
-
-                // BUSQUEDA FLEXIBLE: Comparamos números contra números (ignorando si es texto o int)
+                // Buscamos manualmente en la respuesta
                 const item = data.items.find(i => {
-                    const bsaleBarcode = String(i.barcode || "").replace(/[^0-9]/g, '');
-                    const bsaleSKU = String(i.code || "").replace(/[^0-9]/g, '');
-                    return bsaleBarcode === codigoBuscado || bsaleSKU === codigoBuscado;
+                    const bVal = String(i.barcode || "").trim();
+                    const sVal = String(i.code || "").trim();
+                    return bVal === codigo || sVal === codigo;
                 });
 
                 if (item) {
-                    log("¡ÉXITO! Producto hallado.");
+                    log("¡PRODUCTO ENCONTRADO!");
                     mostrarProducto(item);
                 } else {
-                    log("No hallado en los últimos 50.");
-                    // DIAGNÓSTICO: Mostramos qué leyó el celular vs qué hay en Bsale
-                    const primerBarcode = data.items[0].barcode || "sin barcode";
-                    alert(`NO ENCONTRADO\n\nCelular leyó: ${codigoBuscado}\nEjemplo en Bsale: ${primerBarcode}\n\nSi son iguales, revisa espacios en Bsale.`);
-                    reiniciar();
+                    log("No está en la lista reciente.");
+                    // Si no está, hacemos un último intento buscando específicamente
+                    await intentoFinal(codigo);
                 }
             } catch (error) {
-                log("FALLA CRÍTICA: " + error.message);
-                alert("Error de red. Verifica tus datos móviles.");
+                log("Error: " + error.message);
+                reiniciar();
+            }
+        }
+
+        async function intentoFinal(codigo) {
+            log("Intento final...");
+            const url = `https://api.bsale.com.mx/v1/variants.json?barcode=${codigo}&access_token=${TOKEN}`;
+            const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+            
+            const res = await fetch(proxy);
+            const wrap = await res.json();
+            const data = JSON.parse(wrap.contents);
+
+            if (data.count > 0) {
+                mostrarProducto(data.items[0]);
+            } else {
+                alert("EL PRODUCTO NO APARECE EN BSALE.\n\nCódigo buscado: " + codigo + "\n\n1. Revisa que el código esté en 'Código de Barras'.\n2. Espera 5 min a que Bsale actualice.");
                 reiniciar();
             }
         }
 
         function mostrarProducto(item) {
             document.getElementById('p-name').innerText = item.description;
-            document.getElementById('p-sku').innerText = "ID: " + item.id + " | SKU: " + (item.code || "S/N");
+            document.getElementById('p-sku').innerText = "SKU: " + (item.code || "S/N");
             document.getElementById('card').style.display = 'block';
             document.getElementById('overlay').style.display = 'block';
-        }
-
-        function buscarManual() {
-            const cod = prompt("Escribe el código:");
-            if(cod) buscar(cod);
         }
 
         function reiniciar() {
             document.getElementById('card').style.display = 'none';
             document.getElementById('overlay').style.display = 'none';
-            log("Esperando código...");
-            iniciar();
-        }
-
-        function iniciar() {
             scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, (t) => {
                 scanner.stop();
                 buscar(t);
-            }).catch(e => log("Error cámara: " + e));
+            });
         }
 
-        iniciar();
+        reiniciar();
     </script>
 </body>
 </html>
