@@ -3,104 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bsale Scanner - Versión Colab</title>
+    <title>Bsale Directo</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        :root { --blue: #007bff; --green: #28a745; --dark: #121212; }
-        body { font-family: sans-serif; background: var(--dark); color: white; margin: 0; text-align: center; }
-        header { padding: 15px; background: #1f1f1f; border-bottom: 2px solid var(--blue); }
-        #reader-wrapper { width: 92%; max-width: 350px; margin: 20px auto; border-radius: 15px; overflow: hidden; border: 3px solid #333; }
-        #debug-log { background: #000; color: #0f0; font-family: monospace; font-size: 11px; height: 100px; overflow-y: auto; margin: 10px; padding: 10px; text-align: left; border: 1px solid #444; }
-        .card { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; max-width: 400px; background: white; color: black; padding: 30px; border-radius: 25px; display: none; z-index: 1000; box-shadow: 0 0 50px #000; }
-        .price { font-size: 3.5rem; color: var(--green); font-weight: 900; margin: 10px 0; }
-        button { background: var(--blue); color: white; border: none; padding: 18px; width: 100%; border-radius: 12px; font-weight: bold; font-size: 1.2rem; cursor: pointer; }
-        #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; z-index: 999; }
+        body { font-family: sans-serif; background: #121212; color: white; text-align: center; margin: 0; }
+        header { padding: 15px; background: #1f1f1f; border-bottom: 2px solid #007bff; }
+        #reader { width: 90%; max-width: 350px; margin: 20px auto; border-radius: 15px; overflow: hidden; }
+        #log { background: #000; color: #0f0; font-family: monospace; font-size: 11px; height: 80px; overflow-y: auto; margin: 10px; padding: 10px; text-align: left; }
+        .card { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; background: white; color: black; padding: 30px; border-radius: 20px; display: none; z-index: 1000; }
+        button { background: #007bff; color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <header><strong>BSALE SCANNER PRO</strong></header>
-    <div id="reader-wrapper"><div id="reader"></div></div>
-    
-    <div id="debug-log">Iniciando sistema...</div>
+    <header><strong>CONEXIÓN DIRECTA</strong></header>
+    <div id="reader"></div>
+    <div id="log">> Esperando...</div>
 
-    <div id="overlay"></div>
     <div id="card" class="card">
-        <h2 id="p-name" style="margin:0; font-size: 1.4rem;"></h2>
-        <div id="p-price" class="price"></div>
-        <p id="p-sku" style="color:#666; margin-bottom: 20px; font-family: monospace;"></p>
-        <button onclick="reiniciar()">ESCANEAR OTRO</button>
+        <h2 id="p-name"></h2>
+        <div id="p-price" style="font-size: 3rem; color: green; font-weight: bold;"></div>
+        <p id="p-sku"></p>
+        <button onclick="location.reload()">ESCANEAR OTRO</button>
     </div>
 
     <script>
         const TOKEN = '684b8921739361288e129f1e4f6848ef60252217';
         const scanner = new Html5Qrcode("reader");
 
-        function log(msg) {
-            const d = document.getElementById('debug-log');
-            d.innerHTML += "> " + msg + "<br>";
-            d.scrollTop = d.scrollHeight;
+        function writeLog(msg) {
+            document.getElementById('log').innerHTML += "<br>> " + msg;
         }
 
         async function buscar(codigo) {
-            const cod = codigo.trim();
-            log("Escaneado: " + cod);
+            writeLog("Buscando: " + codigo);
             
-            // Forzamos la URL exactamente como en Colab
-            const bsaleUrl = `https://api.bsale.com.mx/v1/variants.json?barcode=${cod}&access_token=${TOKEN}`;
-            
-            // Usamos un proxy que NO deforma la URL ni guarda caché
-            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(bsaleUrl)}`;
-
-            log("Llamando a Bsale...");
+            // PETICIÓN DIRECTA SIN PROXY
+            const url = `https://api.bsale.com.mx/v1/variants.json?barcode=${codigo.trim()}&access_token=${TOKEN}`;
 
             try {
-                const response = await fetch(proxyUrl);
-                
-                if (!response.ok) {
-                    throw new Error("Respuesta de red no válida (Error 401 o 404)");
-                }
+                // Intentamos fetch estándar. Si Bsale no tiene CORS abierto, esto fallará.
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' }
+                });
 
                 const data = await response.json();
-                log("Respuesta recibida. Items encontrados: " + data.count);
 
                 if (data.count > 0) {
                     const item = data.items[0];
-                    log("✅ ¡Éxito!");
-                    
                     document.getElementById('p-name').innerText = item.description;
                     document.getElementById('p-price').innerText = "$" + (item.netPrice || "0.00");
-                    // Aquí usamos barCode con C mayúscula para el texto, tal como descubriste
-                    document.getElementById('p-sku').innerText = "BC: " + (item.barCode || "N/A") + " | SKU: " + (item.code || "N/A");
-                    
+                    document.getElementById('p-sku').innerText = "SKU: " + item.code;
                     document.getElementById('card').style.display = 'block';
-                    document.getElementById('overlay').style.display = 'block';
                 } else {
-                    log("❌ Bsale no encontró el barcode: " + cod);
-                    alert("Código no registrado en Bsale: " + cod);
-                    reiniciar();
+                    alert("No encontrado: " + codigo);
+                    location.reload();
                 }
             } catch (e) {
-                log("❌ FALLA DE CONEXIÓN: " + e.message);
-                alert("Error de red. Prueba con datos móviles.");
-                reiniciar();
+                writeLog("ERROR CORS: El navegador bloqueó la conexión directa.");
+                writeLog("Intentando método alternativo...");
+                
+                // MÉTODO 2: Si falla el primero, intentamos con el token en la cabecera
+                try {
+                     const response2 = await fetch(`https://api.bsale.com.mx/v1/variants.json?barcode=${codigo.trim()}`, {
+                        headers: { 'access_token': TOKEN }
+                     });
+                     const data2 = await response2.json();
+                     if(data2.count > 0) mostrar(data2.items[0]);
+                } catch (e2) {
+                    alert("BLOQUEO DE SEGURIDAD: Tu celular no permite conectar directo a Bsale por seguridad (CORS).");
+                }
             }
         }
 
-        function reiniciar() {
-            document.getElementById('card').style.display = 'none';
-            document.getElementById('overlay').style.display = 'none';
-            iniciar();
-        }
-
-        function iniciar() {
-            scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, (t) => {
-                scanner.stop();
-                buscar(t);
-            }).catch(e => log("Error cámara: " + e));
-        }
-
-        iniciar();
+        scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (t) => {
+            scanner.stop();
+            buscar(t);
+        });
     </script>
 </body>
 </html>
