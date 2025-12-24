@@ -3,117 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bsale Scanner Pro</title>
+    <title>Verificador Bsale Pro</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        :root { --primary: #007bff; --bg: #000000; --card: #ffffff; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: white; margin: 0; overflow: hidden; }
+        :root { --primary: #007bff; --success: #28a745; --dark: #121212; }
+        body { font-family: -apple-system, sans-serif; background: var(--dark); color: white; margin: 0; display: flex; flex-direction: column; align-items: center; }
         
-        /* Estilo del Escáner */
-        #reader { width: 100%; height: 100vh; }
-        #overlay { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            border: 50px solid rgba(0,0,0,0.5); box-sizing: border-box;
-            pointer-events: none; z-index: 10;
+        header { width: 100%; padding: 20px 0; text-align: center; background: #1f1f1f; border-bottom: 2px solid var(--primary); margin-bottom: 20px; }
+        
+        /* Contenedor del Escáner (Tamaño ajustado) */
+        #reader-container { 
+            width: 90%; max-width: 350px; position: relative; 
+            border-radius: 20px; overflow: hidden; border: 4px solid #333;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
+        #reader { width: 100%; }
 
-        /* Tarjeta de Resultado */
+        /* Status de lectura */
+        #status { margin-top: 15px; color: #aaa; font-size: 0.9rem; font-weight: bold; }
+
+        /* Tarjeta de Resultados (Popup) */
         .result-card { 
-            position: fixed; bottom: 0; left: 0; right: 0; 
-            background: var(--card); color: #1a1a1a; padding: 30px; 
-            border-radius: 30px 30px 0 0; display: none; z-index: 1000;
-            box-shadow: 0 -10px 30px rgba(0,0,0,0.5);
-            animation: slideUp 0.3s ease-out; text-align: center;
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9);
+            width: 85%; max-width: 400px; background: white; color: #333; 
+            padding: 25px; border-radius: 25px; display: none; z-index: 1000;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8); text-align: center;
         }
-        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .result-card.active { display: block; transform: translate(-50%, -50%) scale(1); transition: 0.3s; }
 
-        .price { font-size: 4rem; color: #218838; font-weight: 900; margin: 10px 0; }
-        .product-name { font-size: 1.5rem; font-weight: bold; color: #333; }
-        
+        .price { font-size: 3.5rem; color: var(--success); font-weight: 800; margin: 10px 0; }
+        .p-name { font-size: 1.4rem; font-weight: bold; margin-bottom: 5px; }
+        .p-sku { font-size: 0.8rem; color: #888; margin-bottom: 20px; }
+
         button { 
-            background: var(--primary); color: white; border: none; 
-            padding: 20px; width: 100%; border-radius: 15px; 
-            font-size: 1.2rem; font-weight: bold; margin-top: 15px;
-            cursor: pointer;
+            background: var(--primary); color: white; border: none; padding: 18px; 
+            width: 100%; border-radius: 12px; font-weight: bold; font-size: 1.1rem;
         }
 
-        #status-bar {
-            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 20px;
-            z-index: 100; font-size: 0.9rem; border: 1px solid var(--primary);
-        }
+        /* Capa oscura de fondo */
+        #overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.7); display:none; z-index: 999; }
     </style>
 </head>
 <body>
 
-    <div id="status-bar">Esperando código...</div>
-    <div id="reader"></div>
-    <div id="overlay"></div>
+    <header><strong>VERIFICADOR BSALE</strong></header>
 
+    <div id="reader-container">
+        <div id="reader"></div>
+    </div>
+    
+    <div id="status">ESCANEANDO CÓDIGO...</div>
+
+    <div id="overlay"></div>
     <div id="result-card" class="result-card">
-        <div id="p-name" class="product-name">Cargando...</div>
+        <div id="p-name" class="p-name">Cargando...</div>
         <div id="p-price" class="price">$150.00</div>
-        <div id="p-sku" style="color: #666; margin-bottom: 20px; font-family: monospace;"></div>
-        <button onclick="cerrarCard()">SIGUIENTE PRODUCTO</button>
+        <div id="p-sku" class="p-sku"></div>
+        <button onclick="reiniciar()">SIGUIENTE PRODUCTO</button>
     </div>
 
     <script>
         const TOKEN = '684b8921739361288e129f1e4f6848ef60252217';
-        let isScanning = true;
-        const html5QrCode = new Html5Qrcode("reader");
+        let html5QrCode = new Html5Qrcode("reader");
+
+        // Función para el sonido de "Beep"
+        function playBeep() {
+            const context = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = context.createOscillator();
+            const gain = context.createGain();
+            oscillator.type = "sine";
+            oscillator.frequency.setValueAtTime(880, context.currentTime); // Tono alto
+            gain.gain.setValueAtTime(0.1, context.currentTime);
+            oscillator.connect(gain);
+            gain.connect(context.destination);
+            oscillator.start();
+            oscillator.stop(context.currentTime + 0.1);
+        }
 
         async function buscarEnBsale(codigo) {
-            if (!isScanning) return;
-            isScanning = false;
+            document.getElementById('status').innerText = "BUSCANDO: " + codigo;
             
-            document.getElementById('status-bar').innerText = "Buscando: " + codigo;
-            
-            // URL directa ya que la auditoría confirmó que el buscador funciona
             const bsaleUrl = `https://api.bsale.com.mx/v1/variants.json?barcode=${codigo.trim()}&access_token=${TOKEN}`;
             const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(bsaleUrl)}`;
 
             try {
-                const response = await fetch(proxyUrl);
-                const wrapper = await response.json();
-                const data = JSON.parse(wrapper.contents);
+                const res = await fetch(proxyUrl);
+                const wrap = await res.json();
+                const data = JSON.parse(wrap.contents);
 
                 if (data.count > 0) {
+                    playBeep(); // Suena al encontrar
                     const item = data.items[0];
                     document.getElementById('p-name').innerText = item.description;
-                    document.getElementById('p-sku').innerText = "ID: " + item.id + " | SKU: " + (item.code || 'S/N');
-                    document.getElementById('result-card').style.display = 'block';
-                    document.getElementById('status-bar').innerText = "¡Encontrado!";
+                    document.getElementById('p-sku').innerText = "SKU: " + (item.code || "S/N");
+                    
+                    document.getElementById('overlay').style.display = 'block';
+                    document.getElementById('result-card').classList.add('active');
                 } else {
-                    alert("Producto no encontrado en Bsale: " + codigo);
+                    alert("No registrado: " + codigo);
                     reiniciar();
                 }
-            } catch (error) {
-                alert("Error de conexión. Intenta con Datos Móviles.");
+            } catch (e) {
+                alert("Error de red. Usa datos móviles.");
                 reiniciar();
             }
         }
 
-        function cerrarCard() {
-            document.getElementById('result-card').style.display = 'none';
-            reiniciar();
-        }
-
         function reiniciar() {
-            isScanning = true;
-            document.getElementById('status-bar').innerText = "Esperando código...";
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('result-card').classList.remove('active');
+            document.getElementById('status').innerText = "ESCANEANDO CÓDIGO...";
+            iniciarScanner();
         }
 
-        const config = { 
-            fps: 20, 
-            qrbox: { width: 280, height: 180 },
-            aspectRatio: 1.0 
-        };
+        function iniciarScanner() {
+            html5QrCode.start(
+                { facingMode: "environment" }, 
+                { fps: 20, qrbox: { width: 250, height: 150 } },
+                (text) => {
+                    html5QrCode.stop();
+                    buscarEnBsale(text);
+                }
+            ).catch(err => console.error(err));
+        }
 
-        html5QrCode.start(
-            { facingMode: "environment" }, 
-            config,
-            (decodedText) => { if(isScanning) buscarEnBsale(decodedText); }
-        );
+        iniciarScanner();
     </script>
 </body>
 </html>
