@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bsale Scanner Fix 401</title>
+    <title>Bsale Scanner PRO Final</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         :root { --blue: #007bff; --green: #28a745; --dark: #121212; }
@@ -15,13 +15,18 @@
         .price { font-size: 4rem; color: var(--green); font-weight: 900; }
         button { background: var(--blue); color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; font-weight: bold; font-size: 1.2rem; cursor: pointer; }
         #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; z-index: 999; }
+        .btn-manual { background: none; border: 1px solid #555; color: #aaa; padding: 8px; border-radius: 5px; margin-bottom: 10px; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <header><strong>VERIFICADOR PRO</strong></header>
+    <header><strong>VERIFICADOR BSALE MX</strong></header>
+    
     <div id="reader-wrapper"><div id="reader"></div></div>
-    <div id="debug-log">Iniciando...</div>
+
+    <button class="btn-manual" onclick="buscarManual()">⌨️ INGRESAR CÓDIGO MANUAL</button>
+
+    <div id="debug-log">Iniciando sistema...</div>
 
     <div id="overlay"></div>
     <div id="card" class="card">
@@ -32,7 +37,6 @@
     </div>
 
     <script>
-        // SI GENERASTE UN TOKEN NUEVO, CÁMBIALO AQUÍ:
         const TOKEN = '684b8921739361288e129f1e4f6848ef60252217';
         const scanner = new Html5Qrcode("reader");
 
@@ -42,46 +46,81 @@
             d.scrollTop = d.scrollHeight;
         }
 
-        async function buscar(codigo) {
-            log("Escaneado: " + codigo);
+        // FUNCION PRINCIPAL DE BUSQUEDA
+        async function buscar(codigoRaw) {
+            if(!codigoRaw) return;
+            const codigoLimpio = codigoRaw.trim();
+            log("Escaneado: " + codigoLimpio);
             
-            // Usaremos un Proxy que permite enviar cabeceras personalizadas
-            const targetUrl = `https://api.bsale.com.mx/v1/variants.json?barcode=${codigo.trim()}`;
-            
-            // Usamos un proxy que no bloquea Headers (ThingProxy)
-            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl + "&access_token=" + TOKEN)}`;
+            // 1. Intentamos búsqueda directa por API (Buscador oficial)
+            const bsaleUrl = `https://api.bsale.com.mx/v1/variants.json?barcode=${codigoLimpio}&access_token=${TOKEN}`;
+            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(bsaleUrl)}`;
 
             try {
                 const response = await fetch(proxyUrl);
-                
-                if (response.status === 401) {
-                    throw new Error("TOKEN NO AUTORIZADO (401)");
-                }
-
-                const data = await response.json();
-                log("Conexión exitosa.");
+                const jsonWrapper = await response.json();
+                const data = typeof jsonWrapper.contents === 'string' ? JSON.parse(jsonWrapper.contents) : jsonWrapper.contents;
 
                 if (data.count > 0) {
-                    const item = data.items[0];
-                    document.getElementById('p-name').innerText = item.description;
-                    document.getElementById('p-sku').innerText = "SKU: " + (item.code || "S/N");
-                    document.getElementById('card').style.display = 'block';
-                    document.getElementById('overlay').style.display = 'block';
+                    log("Éxito: Encontrado por Barcode.");
+                    mostrarProducto(data.items[0]);
                 } else {
-                    log("Producto no registrado.");
-                    alert("No encontrado: " + codigo);
-                    reiniciar();
+                    // PLAN B: Si no aparece en el buscador oficial, buscamos manualmente en los últimos 50
+                    log("No hallado directo. Iniciando barrido manual...");
+                    await buscarManualEnLista(codigoLimpio);
                 }
             } catch (error) {
-                log("ERROR: " + error.message);
-                alert("Error de autenticación o red. Revisa el Token.");
+                log("Error de conexión: " + error.message);
                 reiniciar();
             }
+        }
+
+        // FUNCION DE BARRIDO MANUAL (PLAN B)
+        async function buscarManualEnLista(codigo) {
+            const bsaleUrl = `https://api.bsale.com.mx/v1/variants.json?limit=50&direction=desc&access_token=${TOKEN}`;
+            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(bsaleUrl)}`;
+            
+            try {
+                const res = await fetch(proxyUrl);
+                const wrap = await res.json();
+                const data = JSON.parse(wrap.contents);
+                
+                // Buscamos coincidencia en campo barcode O en campo SKU (code)
+                const item = data.items.find(i => 
+                    String(i.barcode).trim() === codigo || 
+                    String(i.code).trim() === codigo
+                );
+
+                if (item) {
+                    log("¡Encontrado en barrido de lista!");
+                    mostrarProducto(item);
+                } else {
+                    log("Resultado: Código no existe en Bsale.");
+                    alert("No encontrado en los últimos 50 productos: " + codigo);
+                    reiniciar();
+                }
+            } catch (e) {
+                log("Falla en barrido manual.");
+                reiniciar();
+            }
+        }
+
+        function mostrarProducto(item) {
+            document.getElementById('p-name').innerText = item.description;
+            document.getElementById('p-sku').innerText = "ID: " + item.id + " | SKU: " + (item.code || "S/N");
+            document.getElementById('card').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        }
+
+        function buscarManual() {
+            const cod = prompt("Escribe el código de barras:");
+            if(cod) buscar(cod);
         }
 
         function reiniciar() {
             document.getElementById('card').style.display = 'none';
             document.getElementById('overlay').style.display = 'none';
+            log("Listo para escanear...");
             iniciar();
         }
 
