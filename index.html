@@ -3,69 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bsale Directo</title>
+    <title>Bsale barCode Fix</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        body { font-family: sans-serif; background: #1a1a1a; color: white; text-align: center; margin: 0; padding: 20px; }
-        #reader { width: 100%; max-width: 400px; margin: auto; border-radius: 10px; overflow: hidden; }
-        .result-card { background: white; color: black; padding: 20px; border-radius: 15px; margin-top: 20px; display: none; }
-        .price { font-size: 2.5rem; color: #28a745; font-weight: bold; }
-        #status { color: #888; font-size: 0.8rem; margin-top: 10px; }
+        body { font-family: sans-serif; background: #121212; color: white; text-align: center; margin: 0; }
+        #reader { width: 90%; max-width: 350px; margin: 20px auto; border-radius: 15px; overflow: hidden; }
+        .card { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; background: white; color: black; padding: 30px; border-radius: 20px; display: none; z-index: 1000; }
+        #log { color: #0f0; font-family: monospace; font-size: 12px; margin: 10px; }
     </style>
 </head>
 <body>
 
-    <h2>VERIFICADOR DIRECTO</h2>
+    <h2 style="margin-top:20px;">MODO barCode (MAYÚSCULA)</h2>
     <div id="reader"></div>
-    <div id="status">Iniciando cámara...</div>
+    <div id="log">Iniciando...</div>
 
-    <div id="result" class="result-card">
-        <h3 id="p-name"></h3>
-        <div id="p-price" class="price"></div>
-        <p id="p-sku"></p>
-        <button onclick="location.reload()" style="width:100%; padding:10px; background:#007bff; color:white; border:none; border-radius:5px;">ESCANEAR OTRO</button>
+    <div id="card" class="card">
+        <h2 id="p-name"></h2>
+        <div id="p-price" style="font-size: 3rem; color: green; font-weight: bold;"></div>
+        <p id="p-sku" style="color: #666;"></p>
+        <button onclick="location.reload()" style="width:100%; padding:15px; background:#007bff; color:white; border:none; border-radius:10px;">ESCANEAR OTRO</button>
     </div>
 
     <script>
         const TOKEN = '684b8921739361288e129f1e4f6848ef60252217';
         const scanner = new Html5Qrcode("reader");
 
-        async function buscarDirecto(codigo) {
-            document.getElementById('status').innerText = "Buscando en Bsale: " + codigo;
+        async function buscar(codigo) {
+            const cod = codigo.trim();
+            document.getElementById('log').innerText = "Buscando barCode=" + cod;
             
-            // URL Directa a la API de Bsale México
-            const url = `https://api.bsale.com.mx/v1/variants.json?barcode=${codigo.trim()}&access_token=${TOKEN}`;
+            // USANDO barCode EXACTAMENTE COMO INDICASTE
+            const url = `https://api.bsale.com.mx/v1/variants.json?barCode=${cod}&access_token=${TOKEN}`;
 
             try {
+                // Intentamos conexión directa
                 const response = await fetch(url);
                 
-                if (!response.ok) throw new Error("Error en respuesta: " + response.status);
+                if (!response.ok) throw new Error("Status: " + response.status);
 
                 const data = await response.json();
 
                 if (data.count > 0) {
                     const item = data.items[0];
-                    document.getElementById('result').style.display = 'block';
                     document.getElementById('p-name').innerText = item.description;
                     document.getElementById('p-price').innerText = "$" + (item.netPrice || "0.00");
                     document.getElementById('p-sku').innerText = "SKU: " + item.code;
-                    document.getElementById('status').innerText = "¡Encontrado!";
+                    document.getElementById('card').style.display = 'block';
                 } else {
-                    alert("No encontrado: " + codigo);
+                    document.getElementById('log').innerText = "No encontrado con barCode=" + cod;
+                    alert("No encontrado con barCode exacto.");
                     location.reload();
                 }
-            } catch (error) {
-                console.error(error);
-                document.getElementById('status').innerText = "ERROR: " + error.message;
-                alert("BLOQUEO DE NAVEGADOR (CORS): \nTu celular no permite conectar directo a Bsale por seguridad. Esto solo se resuelve usando un Proxy.");
+            } catch (e) {
+                document.getElementById('log').innerText = "ERROR: " + e.message;
+                // Si falla por CORS, el alert avisará
+                if(e.message.includes("fetch")) {
+                   alert("Bloqueo de seguridad del navegador (CORS).\nSin proxy, el celular no puede conectar directo a Bsale.");
+                }
             }
         }
 
-        scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (decodedText) => {
+        scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (t) => {
             scanner.stop();
-            buscarDirecto(decodedText);
-        }).catch(err => {
-            document.getElementById('status').innerText = "Error de cámara: " + err;
+            buscar(t);
         });
     </script>
 </body>
