@@ -85,18 +85,20 @@
             font-size: 16px;
         }
 
-        /* Historial Estilo iOS */
-        .history-list { margin-top: 10px; }
+        /* Historial Mejorado */
+        .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .history-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding: 12px 0;
             border-bottom: 0.5px solid var(--ios-border);
+            cursor: pointer;
         }
+        .history-item:active { background: rgba(0,0,0,0.05); }
         .history-info { display: flex; flex-direction: column; }
-        .history-name { font-size: 14px; font-weight: 500; }
-        .history-date { font-size: 11px; color: var(--ios-secondary); }
+        .history-name { font-size: 14px; font-weight: 500; color: var(--ios-blue); }
+        .history-sku { font-size: 11px; color: var(--ios-secondary); }
 
         .tab-bar {
             position: fixed;
@@ -128,6 +130,8 @@
             cursor: pointer;
         }
 
+        .btn-link { background: none; border: none; color: var(--ios-blue); font-size: 12px; cursor: pointer; }
+
         #loading { display: none; text-align: center; padding: 10px; }
     </style>
 </head>
@@ -151,9 +155,12 @@
             <button class="btn-ios" onclick="restartScanner()">Escanear otro</button>
         </div>
         
-        <div class="ios-card">
-            <div class="label">Historial Reciente</div>
-            <div id="history-explore" class="history-list"></div>
+        <div class="ios-card" style="margin-top: 20px;">
+            <div class="history-header">
+                <div class="label" style="margin:0">Historial (Últimos 10)</div>
+                <button class="btn-link" onclick="clearHistory()">Limpiar</button>
+            </div>
+            <div id="history-list" class="history-list"></div>
         </div>
     </div>
 
@@ -173,7 +180,7 @@
             <h3>Entrada de Stock</h3>
             <div class="label">Destino de Mercadería</div>
             <select id="rec-office" class="ios-input"></select>
-            <p id="rec-status" style="font-size:13px; color:var(--ios-secondary)">Escanea para comenzar recepción.</p>
+            <p id="rec-status" style="font-size:13px; color:var(--ios-secondary)">Selecciona tienda y escanea el código.</p>
         </div>
         <div id="reader-receive"></div>
         <div id="rec-form" style="display:none;" class="ios-card">
@@ -204,7 +211,7 @@
         let html5QrCode;
         let currentMode = 'explore';
         let selectedVariantId = null;
-        let currentItemCost = 0; // Para no enviar costo 0 en recepción
+        let currentItemCost = 0;
         let history = JSON.parse(localStorage.getItem('bsale_history')) || [];
 
         async function loadOffices() {
@@ -218,13 +225,19 @@
                     opt.innerText = off.name;
                     select.appendChild(opt);
                 });
-            } catch (e) { console.error("Error cargando sucursales"); }
+            } catch (e) { console.error("Error sucursales"); }
         }
 
+        // --- LÓGICA DE HISTORIAL ---
         function addToHistory(item) {
+            // Evitar duplicados seguidos
+            if (history.length > 0 && history[0].sku === item.code) return;
+
             const entry = {
                 name: item.product.name,
                 sku: item.code,
+                barcode: item.barCode,
+                cost: item.costs ? item.costs.averageCost : 0,
                 time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
             };
             history.unshift(entry);
@@ -234,18 +247,45 @@
         }
 
         function renderHistory() {
-            const container = document.getElementById('history-explore');
-            container.innerHTML = history.map(h => `
-                <div class="history-item">
+            const container = document.getElementById('history-list');
+            if (history.length === 0) {
+                container.innerHTML = '<p style="color:gray; font-size:12px; text-align:center;">No hay escaneos recientes</p>';
+                return;
+            }
+            container.innerHTML = history.map((h, index) => `
+                <div class="history-item" onclick="revisitItem(${index})">
                     <div class="history-info">
                         <span class="history-name">${h.name}</span>
-                        <span class="history-date">SKU: ${h.sku}</span>
+                        <span class="history-sku">SKU: ${h.sku}</span>
                     </div>
-                    <span class="history-date">${h.time}</span>
+                    <span class="history-sku">${h.time}</span>
                 </div>
             `).join('');
         }
 
+        function clearHistory() {
+            if(confirm("¿Borrar historial?")) {
+                history = [];
+                localStorage.removeItem('bsale_history');
+                renderHistory();
+            }
+        }
+
+        function revisitItem(index) {
+            const item = history[index];
+            // Simulamos la búsqueda para mostrar en la vista actual
+            if (currentMode === 'explore') {
+                document.getElementById('exp-name').innerText = item.name;
+                document.getElementById('exp-sku').innerText = item.sku;
+                document.getElementById('exp-cost').innerText = `$${item.cost.toLocaleString()}`;
+                document.getElementById('reader-explore').style.display = 'none';
+                document.getElementById('result-explore').style.display = 'block';
+            } else {
+                alert("Producto: " + item.name + "\nSKU: " + item.sku);
+            }
+        }
+
+        // --- LÓGICA DE NAVEGACIÓN Y SCANNER ---
         async function switchView(mode, element) {
             currentMode = mode;
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -277,8 +317,8 @@
                     if (currentMode === 'explore') showExplore(item);
                     else if (currentMode === 'stock') showStock(item);
                     else if (currentMode === 'receive') showReceiveForm(item);
-                } else { alert("No encontrado"); restartScanner(); }
-            } catch (e) { alert("Error API"); restartScanner(); }
+                } else { alert("No encontrado en Bsale"); restartScanner(); }
+            } catch (e) { alert("Error de red"); restartScanner(); }
             finally { document.getElementById('loading').style.display = 'none'; }
         }
 
@@ -306,7 +346,7 @@
 
         function showReceiveForm(item) {
             selectedVariantId = item.id;
-            currentItemCost = item.costs ? item.costs.averageCost : 0;
+            currentItemCost = item.costs ? item.costs.averageCost : 1; 
             document.getElementById('rec-prod-name').innerText = item.product.name;
             document.getElementById('reader-receive').style.display = 'none';
             document.getElementById('rec-form').style.display = 'block';
@@ -315,42 +355,30 @@
         async function confirmReceive() {
             const qty = document.getElementById('rec-quantity').value;
             const officeId = document.getElementById('rec-office').value;
-            if (!qty || qty <= 0) return alert("Cantidad inválida");
+            if (!qty || qty <= 0) return alert("Ingresa cantidad");
 
-            // CORRECCIÓN: Usamos un payload más robusto. 
-            // Si el costo es 0, intentamos enviar un valor mínimo o el costo actual para evitar rechazo.
             const payload = {
-                "receptionTypeId": 1, 
+                "receptionTypeId": 1,
                 "officeId": parseInt(officeId),
                 "details": [{
                     "variantId": parseInt(selectedVariantId), 
                     "quantity": parseFloat(qty), 
-                    "cost": parseFloat(currentItemCost) || 1 // Evita el error de costo 0
+                    "cost": parseFloat(currentItemCost) || 1
                 }]
             };
 
             try {
                 const res = await fetch('https://api.bsale.io/v1/receptions.json', {
                     method: 'POST',
-                    headers: { 
-                        'access_token': TOKEN, 
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
+                    headers: { 'access_token': TOKEN, 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                
-                const responseData = await res.json();
-
-                if (res.ok) { 
-                    alert("✅ Stock ingresado correctamente"); 
-                    restartScanner(); 
-                } else { 
-                    // Mostramos el error específico de Bsale si existe
-                    alert("Error Bsale: " + (responseData.errors || "Verifica el tipo de recepción")); 
-                    console.log(responseData);
+                if (res.ok) { alert("✅ Éxito: Stock actualizado"); restartScanner(); }
+                else { 
+                    const errorData = await res.json();
+                    alert("Error Bsale: " + (errorData.errors || "No permitido"));
                 }
-            } catch (e) { alert("Error de red"); }
+            } catch (e) { alert("Error conexión"); }
         }
 
         function restartScanner() {
