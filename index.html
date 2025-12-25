@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bsale Suite iOS</title>
+    <title>Bsale Suite iOS Pro</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         :root {
@@ -33,13 +33,10 @@
         }
 
         .nav-header {
-            position: sticky;
-            top: 0;
+            position: sticky; top: 0;
             background: var(--ios-card);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            padding: 15px;
-            text-align: center;
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            padding: 15px; text-align: center;
             border-bottom: 0.5px solid var(--ios-border);
             z-index: 100;
         }
@@ -52,21 +49,15 @@
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
         #reader-explore, #reader-stock, #reader-receive {
-            width: 100% !important;
-            max-width: 400px;
-            margin: 0 auto 20px;
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            width: 100% !important; max-width: 400px;
+            margin: 0 auto 20px; border-radius: 20px;
+            overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
 
         .ios-card {
-            background: var(--ios-card);
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 20px;
-            backdrop-filter: blur(10px);
-            border: 0.5px solid var(--ios-border);
+            background: var(--ios-card); border-radius: 15px;
+            padding: 20px; margin-bottom: 20px;
+            backdrop-filter: blur(10px); border: 0.5px solid var(--ios-border);
         }
 
         .label { font-size: 11px; color: var(--ios-secondary); text-transform: uppercase; margin-bottom: 4px; font-weight: 600; }
@@ -74,43 +65,28 @@
         .cost-value { color: #34C759; font-weight: 700; font-size: 1.3rem; }
 
         .ios-input {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 15px;
-            border-radius: 10px;
-            border: 1px solid var(--ios-border);
-            background: var(--ios-bg);
-            color: var(--ios-text);
-            box-sizing: border-box;
-            font-size: 16px;
+            width: 100%; padding: 12px; margin-bottom: 15px;
+            border-radius: 10px; border: 1px solid var(--ios-border);
+            background: var(--ios-bg); color: var(--ios-text);
+            box-sizing: border-box; font-size: 16px;
         }
 
-        /* Historial Mejorado */
+        /* Historial */
         .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .history-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 0;
-            border-bottom: 0.5px solid var(--ios-border);
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 0; border-bottom: 0.5px solid var(--ios-border);
             cursor: pointer;
         }
         .history-item:active { background: rgba(0,0,0,0.05); }
-        .history-info { display: flex; flex-direction: column; }
         .history-name { font-size: 14px; font-weight: 500; color: var(--ios-blue); }
         .history-sku { font-size: 11px; color: var(--ios-secondary); }
 
         .tab-bar {
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-            background: var(--ios-card);
-            backdrop-filter: blur(25px);
-            -webkit-backdrop-filter: blur(25px);
-            display: flex;
-            justify-content: space-around;
-            padding: 10px 0 25px 0;
-            border-top: 0.5px solid var(--ios-border);
+            position: fixed; bottom: 0; width: 100%;
+            background: var(--ios-card); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+            display: flex; justify-content: space-around;
+            padding: 10px 0 25px 0; border-top: 0.5px solid var(--ios-border);
             z-index: 1000;
         }
 
@@ -119,19 +95,12 @@
         .tab-icon { font-size: 24px; display: block; margin-bottom: 4px; }
 
         .btn-ios {
-            background: var(--ios-blue);
-            color: white;
-            border: none;
-            padding: 16px;
-            border-radius: 14px;
-            width: 100%;
-            font-weight: 600;
-            font-size: 16px;
-            cursor: pointer;
+            background: var(--ios-blue); color: white; border: none;
+            padding: 16px; border-radius: 14px; width: 100%;
+            font-weight: 600; font-size: 16px; cursor: pointer;
         }
 
         .btn-link { background: none; border: none; color: var(--ios-blue); font-size: 12px; cursor: pointer; }
-
         #loading { display: none; text-align: center; padding: 10px; }
     </style>
 </head>
@@ -155,12 +124,12 @@
             <button class="btn-ios" onclick="restartScanner()">Escanear otro</button>
         </div>
         
-        <div class="ios-card" style="margin-top: 20px;">
+        <div class="ios-card">
             <div class="history-header">
-                <div class="label" style="margin:0">Historial (Últimos 10)</div>
+                <div class="label" style="margin:0">Escaneos Recientes</div>
                 <button class="btn-link" onclick="clearHistory()">Limpiar</button>
             </div>
-            <div id="history-list" class="history-list"></div>
+            <div id="history-list"></div>
         </div>
     </div>
 
@@ -177,12 +146,16 @@
 
     <div id="view-receive" class="view">
         <div class="ios-card">
-            <h3>Entrada de Stock</h3>
-            <div class="label">Destino de Mercadería</div>
-            <select id="rec-office" class="ios-input"></select>
-            <p id="rec-status" style="font-size:13px; color:var(--ios-secondary)">Selecciona tienda y escanea el código.</p>
+            <h3>Configuración de Ingreso</h3>
+            <div class="label">Tipo de Recepción</div>
+            <select id="rec-type" class="ios-input"><option>Cargando...</option></select>
+            
+            <div class="label">Sucursal Destino</div>
+            <select id="rec-office" class="ios-input"><option>Cargando...</option></select>
         </div>
+        
         <div id="reader-receive"></div>
+
         <div id="rec-form" style="display:none;" class="ios-card">
             <h4 id="rec-prod-name" style="margin:0 0 15px 0">Producto</h4>
             <div class="label">Cantidad a ingresar</div>
@@ -214,29 +187,38 @@
         let currentItemCost = 0;
         let history = JSON.parse(localStorage.getItem('bsale_history')) || [];
 
-        async function loadOffices() {
+        // --- CARGA DE DATOS MAESTROS ---
+        async function loadInitialData() {
             try {
-                const res = await fetch('https://api.bsale.io/v1/offices.json', { headers: { 'access_token': TOKEN } });
-                const data = await res.json();
-                const select = document.getElementById('rec-office');
-                data.items.forEach(off => {
-                    const opt = document.createElement('option');
-                    opt.value = off.id;
-                    opt.innerText = off.name;
-                    select.appendChild(opt);
+                // Cargar Sucursales
+                const resOff = await fetch('https://api.bsale.io/v1/offices.json', { headers: { 'access_token': TOKEN } });
+                const dataOff = await resOff.json();
+                const selectOff = document.getElementById('rec-office');
+                selectOff.innerHTML = '';
+                dataOff.items.forEach(off => {
+                    let opt = new Option(off.name, off.id);
+                    selectOff.add(opt);
                 });
-            } catch (e) { console.error("Error sucursales"); }
+
+                // Cargar Tipos de Recepción (Para evitar error "Verifica el tipo")
+                const resTyp = await fetch('https://api.bsale.io/v1/reception_types.json', { headers: { 'access_token': TOKEN } });
+                const dataTyp = await resTyp.json();
+                const selectTyp = document.getElementById('rec-type');
+                selectTyp.innerHTML = '';
+                dataTyp.items.forEach(type => {
+                    if(type.state === 0) { // Solo activos
+                        let opt = new Option(type.name, type.id);
+                        selectTyp.add(opt);
+                    }
+                });
+            } catch (e) { console.error("Error cargando datos iniciales"); }
         }
 
-        // --- LÓGICA DE HISTORIAL ---
+        // --- HISTORIAL ---
         function addToHistory(item) {
-            // Evitar duplicados seguidos
-            if (history.length > 0 && history[0].sku === item.code) return;
-
             const entry = {
                 name: item.product.name,
                 sku: item.code,
-                barcode: item.barCode,
                 cost: item.costs ? item.costs.averageCost : 0,
                 time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
             };
@@ -249,11 +231,11 @@
         function renderHistory() {
             const container = document.getElementById('history-list');
             if (history.length === 0) {
-                container.innerHTML = '<p style="color:gray; font-size:12px; text-align:center;">No hay escaneos recientes</p>';
+                container.innerHTML = '<p style="color:gray; font-size:12px; text-align:center;">Sin escaneos</p>';
                 return;
             }
-            container.innerHTML = history.map((h, index) => `
-                <div class="history-item" onclick="revisitItem(${index})">
+            container.innerHTML = history.map((h, i) => `
+                <div class="history-item" onclick="revisitItem(${i})">
                     <div class="history-info">
                         <span class="history-name">${h.name}</span>
                         <span class="history-sku">SKU: ${h.sku}</span>
@@ -264,36 +246,30 @@
         }
 
         function clearHistory() {
-            if(confirm("¿Borrar historial?")) {
-                history = [];
-                localStorage.removeItem('bsale_history');
-                renderHistory();
-            }
+            history = [];
+            localStorage.removeItem('bsale_history');
+            renderHistory();
         }
 
         function revisitItem(index) {
             const item = history[index];
-            // Simulamos la búsqueda para mostrar en la vista actual
             if (currentMode === 'explore') {
                 document.getElementById('exp-name').innerText = item.name;
                 document.getElementById('exp-sku').innerText = item.sku;
                 document.getElementById('exp-cost').innerText = `$${item.cost.toLocaleString()}`;
                 document.getElementById('reader-explore').style.display = 'none';
                 document.getElementById('result-explore').style.display = 'block';
-            } else {
-                alert("Producto: " + item.name + "\nSKU: " + item.sku);
             }
         }
 
-        // --- LÓGICA DE NAVEGACIÓN Y SCANNER ---
+        // --- SCANNER ---
         async function switchView(mode, element) {
             currentMode = mode;
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.getElementById(`view-${mode}`).classList.add('active');
             document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
             element.classList.add('active');
-            const titles = { explore: 'Explorar Producto', stock: 'Stock Sucursales', receive: 'Recepción' };
-            document.getElementById('viewTitle').innerText = titles[mode];
+            document.getElementById('viewTitle').innerText = { explore: 'Explorar', stock: 'Stock', receive: 'Recepción' }[mode];
             if(html5QrCode) await html5QrCode.stop();
             initScanner(`reader-${mode}`);
         }
@@ -317,13 +293,13 @@
                     if (currentMode === 'explore') showExplore(item);
                     else if (currentMode === 'stock') showStock(item);
                     else if (currentMode === 'receive') showReceiveForm(item);
-                } else { alert("No encontrado en Bsale"); restartScanner(); }
-            } catch (e) { alert("Error de red"); restartScanner(); }
+                } else { alert("No encontrado"); restartScanner(); }
+            } catch (e) { alert("Error API"); restartScanner(); }
             finally { document.getElementById('loading').style.display = 'none'; }
         }
 
         function showExplore(item) {
-            document.getElementById('exp-name').innerText = `${item.product.name} (${item.description || 'Pca'})`;
+            document.getElementById('exp-name').innerText = item.product.name;
             document.getElementById('exp-sku').innerText = item.code;
             document.getElementById('exp-cost').innerText = item.costs ? `$${item.costs.averageCost.toLocaleString()}` : '$0';
             document.getElementById('reader-explore').style.display = 'none';
@@ -332,21 +308,18 @@
 
         async function showStock(item) {
             const res = await fetch(`https://api.bsale.io/v1/stocks.json?variantid=${item.id}`, { headers: { 'access_token': TOKEN } });
-            const dataStock = await res.json();
+            const ds = await res.json();
             document.getElementById('stk-name').innerText = item.product.name;
-            let list = '';
-            dataStock.items.forEach(s => {
-                list += `<div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:0.5px solid var(--ios-border)">
-                <span>Sucursal ID: ${s.officeId}</span><strong>${s.quantity} uds</strong></div>`;
-            });
-            document.getElementById('stk-list').innerHTML = list;
+            document.getElementById('stk-list').innerHTML = ds.items.map(s => `
+                <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:0.5px solid var(--ios-border)">
+                <span>Sucursal ID: ${s.officeId}</span><strong>${s.quantity} uds</strong></div>`).join('');
             document.getElementById('reader-stock').style.display = 'none';
             document.getElementById('result-stock').style.display = 'block';
         }
 
         function showReceiveForm(item) {
             selectedVariantId = item.id;
-            currentItemCost = item.costs ? item.costs.averageCost : 1; 
+            currentItemCost = item.costs ? item.costs.averageCost : 1;
             document.getElementById('rec-prod-name').innerText = item.product.name;
             document.getElementById('reader-receive').style.display = 'none';
             document.getElementById('rec-form').style.display = 'block';
@@ -355,14 +328,16 @@
         async function confirmReceive() {
             const qty = document.getElementById('rec-quantity').value;
             const officeId = document.getElementById('rec-office').value;
-            if (!qty || qty <= 0) return alert("Ingresa cantidad");
+            const typeId = document.getElementById('rec-type').value;
+
+            if (!qty || qty <= 0) return alert("Cantidad inválida");
 
             const payload = {
-                "receptionTypeId": 1,
+                "receptionTypeId": parseInt(typeId),
                 "officeId": parseInt(officeId),
                 "details": [{
-                    "variantId": parseInt(selectedVariantId), 
-                    "quantity": parseFloat(qty), 
+                    "variantId": parseInt(selectedVariantId),
+                    "quantity": parseFloat(qty),
                     "cost": parseFloat(currentItemCost) || 1
                 }]
             };
@@ -373,11 +348,9 @@
                     headers: { 'access_token': TOKEN, 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                if (res.ok) { alert("✅ Éxito: Stock actualizado"); restartScanner(); }
-                else { 
-                    const errorData = await res.json();
-                    alert("Error Bsale: " + (errorData.errors || "No permitido"));
-                }
+                const responseData = await res.json();
+                if (res.ok) { alert("✅ Recepción exitosa"); restartScanner(); }
+                else { alert("Error Bsale: " + (responseData.errors || "Verifica datos")); }
             } catch (e) { alert("Error conexión"); }
         }
 
@@ -385,14 +358,10 @@
             document.querySelectorAll('[id^="result-"], #rec-form').forEach(el => el.style.display = 'none');
             document.querySelectorAll('[id^="reader-"]').forEach(el => el.style.display = 'block');
             document.getElementById('rec-quantity').value = '';
-            html5QrCode.resume();
+            if(html5QrCode) html5QrCode.resume();
         }
 
-        window.onload = () => { 
-            loadOffices(); 
-            renderHistory();
-            initScanner('reader-explore'); 
-        };
+        window.onload = () => { loadInitialData(); renderHistory(); initScanner('reader-explore'); };
     </script>
 </body>
 </html>
