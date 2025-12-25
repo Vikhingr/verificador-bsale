@@ -29,7 +29,7 @@
             background-color: var(--ios-bg);
             color: var(--ios-text);
             margin: 0;
-            padding-bottom: 100px;
+            padding-bottom: 110px;
         }
 
         .nav-header {
@@ -85,6 +85,19 @@
             font-size: 16px;
         }
 
+        /* Historial Estilo iOS */
+        .history-list { margin-top: 10px; }
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 0.5px solid var(--ios-border);
+        }
+        .history-info { display: flex; flex-direction: column; }
+        .history-name { font-size: 14px; font-weight: 500; }
+        .history-date { font-size: 11px; color: var(--ios-secondary); }
+
         .tab-bar {
             position: fixed;
             bottom: 0;
@@ -137,6 +150,11 @@
             </div>
             <button class="btn-ios" onclick="restartScanner()">Escanear otro</button>
         </div>
+        
+        <div class="ios-card">
+            <div class="label">Historial Reciente</div>
+            <div id="history-explore" class="history-list"></div>
+        </div>
     </div>
 
     <div id="view-stock" class="view">
@@ -186,8 +204,9 @@
         let html5QrCode;
         let currentMode = 'explore';
         let selectedVariantId = null;
+        let currentItemCost = 0; // Para no enviar costo 0 en recepción
+        let history = JSON.parse(localStorage.getItem('bsale_history')) || [];
 
-        // 1. Cargar sucursales al iniciar
         async function loadOffices() {
             try {
                 const res = await fetch('https://api.bsale.io/v1/offices.json', { headers: { 'access_token': TOKEN } });
@@ -200,6 +219,31 @@
                     select.appendChild(opt);
                 });
             } catch (e) { console.error("Error cargando sucursales"); }
+        }
+
+        function addToHistory(item) {
+            const entry = {
+                name: item.product.name,
+                sku: item.code,
+                time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+            };
+            history.unshift(entry);
+            if (history.length > 10) history.pop();
+            localStorage.setItem('bsale_history', JSON.stringify(history));
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('history-explore');
+            container.innerHTML = history.map(h => `
+                <div class="history-item">
+                    <div class="history-info">
+                        <span class="history-name">${h.name}</span>
+                        <span class="history-date">SKU: ${h.sku}</span>
+                    </div>
+                    <span class="history-date">${h.time}</span>
+                </div>
+            `).join('');
         }
 
         async function switchView(mode, element) {
@@ -229,6 +273,7 @@
                 const data = await res.json();
                 if (data.count > 0) {
                     const item = data.items[0];
+                    addToHistory(item);
                     if (currentMode === 'explore') showExplore(item);
                     else if (currentMode === 'stock') showStock(item);
                     else if (currentMode === 'receive') showReceiveForm(item);
@@ -240,7 +285,7 @@
         function showExplore(item) {
             document.getElementById('exp-name').innerText = `${item.product.name} (${item.description || 'Pca'})`;
             document.getElementById('exp-sku').innerText = item.code;
-            document.getElementById('exp-cost').innerText = item.costs ? `$${item.costs.averageCost.toLocaleString()}` : 'N/A';
+            document.getElementById('exp-cost').innerText = item.costs ? `$${item.costs.averageCost.toLocaleString()}` : '$0';
             document.getElementById('reader-explore').style.display = 'none';
             document.getElementById('result-explore').style.display = 'block';
         }
@@ -261,6 +306,7 @@
 
         function showReceiveForm(item) {
             selectedVariantId = item.id;
+            currentItemCost = item.costs ? item.costs.averageCost : 0;
             document.getElementById('rec-prod-name').innerText = item.product.name;
             document.getElementById('reader-receive').style.display = 'none';
             document.getElementById('rec-form').style.display = 'block';
@@ -271,20 +317,39 @@
             const officeId = document.getElementById('rec-office').value;
             if (!qty || qty <= 0) return alert("Cantidad inválida");
 
+            // CORRECCIÓN: Usamos un payload más robusto. 
+            // Si el costo es 0, intentamos enviar un valor mínimo o el costo actual para evitar rechazo.
             const payload = {
                 "receptionTypeId": 1, 
                 "officeId": parseInt(officeId),
-                "details": [{"variantId": selectedVariantId, "quantity": parseInt(qty), "cost": 0}]
+                "details": [{
+                    "variantId": parseInt(selectedVariantId), 
+                    "quantity": parseFloat(qty), 
+                    "cost": parseFloat(currentItemCost) || 1 // Evita el error de costo 0
+                }]
             };
 
             try {
                 const res = await fetch('https://api.bsale.io/v1/receptions.json', {
                     method: 'POST',
-                    headers: { 'access_token': TOKEN, 'Content-Type': 'application/json' },
+                    headers: { 
+                        'access_token': TOKEN, 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
                     body: JSON.stringify(payload)
                 });
-                if (res.ok) { alert("✅ Stock ingresado correctamente"); restartScanner(); }
-                else { alert("Error al procesar"); }
+                
+                const responseData = await res.json();
+
+                if (res.ok) { 
+                    alert("✅ Stock ingresado correctamente"); 
+                    restartScanner(); 
+                } else { 
+                    // Mostramos el error específico de Bsale si existe
+                    alert("Error Bsale: " + (responseData.errors || "Verifica el tipo de recepción")); 
+                    console.log(responseData);
+                }
             } catch (e) { alert("Error de red"); }
         }
 
@@ -295,7 +360,11 @@
             html5QrCode.resume();
         }
 
-        window.onload = () => { loadOffices(); initScanner('reader-explore'); };
+        window.onload = () => { 
+            loadOffices(); 
+            renderHistory();
+            initScanner('reader-explore'); 
+        };
     </script>
 </body>
 </html>
