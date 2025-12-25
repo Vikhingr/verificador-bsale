@@ -29,10 +29,9 @@
             background-color: var(--ios-bg);
             color: var(--ios-text);
             margin: 0;
-            padding-bottom: 90px; /* Espacio para el Tab Bar */
+            padding-bottom: 100px;
         }
 
-        /* Header Estilo iOS */
         .nav-header {
             position: sticky;
             top: 0;
@@ -47,24 +46,20 @@
 
         .nav-header h1 { margin: 0; font-size: 17px; font-weight: 600; }
 
-        /* Contenedores de Vista */
         .view { display: none; padding: 20px; animation: fadeIn 0.3s; }
         .view.active { display: block; }
 
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        /* Lector */
-        #reader {
+        #reader-explore, #reader-stock, #reader-receive {
             width: 100% !important;
             max-width: 400px;
             margin: 0 auto 20px;
-            border: none !important;
             border-radius: 20px;
             overflow: hidden;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
 
-        /* Tarjetas iOS */
         .ios-card {
             background: var(--ios-card);
             border-radius: 15px;
@@ -74,11 +69,22 @@
             border: 0.5px solid var(--ios-border);
         }
 
-        .label { font-size: 12px; color: var(--ios-secondary); text-transform: uppercase; margin-bottom: 4px; font-weight: 500; }
+        .label { font-size: 11px; color: var(--ios-secondary); text-transform: uppercase; margin-bottom: 4px; font-weight: 600; }
         .value { font-size: 16px; font-weight: 500; margin-bottom: 12px; }
-        .cost-value { color: #34C759; font-weight: 700; font-size: 1.2rem; }
+        .cost-value { color: #34C759; font-weight: 700; font-size: 1.3rem; }
 
-        /* Tab Bar Inferior */
+        .ios-input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            border: 1px solid var(--ios-border);
+            background: var(--ios-bg);
+            color: var(--ios-text);
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+
         .tab-bar {
             position: fixed;
             bottom: 0;
@@ -93,31 +99,23 @@
             z-index: 1000;
         }
 
-        .tab-item {
-            text-align: center;
-            color: var(--ios-secondary);
-            font-size: 10px;
-            text-decoration: none;
-            flex: 1;
-        }
-
+        .tab-item { text-align: center; color: var(--ios-secondary); font-size: 10px; text-decoration: none; flex: 1; }
         .tab-item.active { color: var(--ios-blue); }
         .tab-icon { font-size: 24px; display: block; margin-bottom: 4px; }
 
-        /* Botones */
         .btn-ios {
             background: var(--ios-blue);
             color: white;
             border: none;
-            padding: 14px;
-            border-radius: 12px;
+            padding: 16px;
+            border-radius: 14px;
             width: 100%;
             font-weight: 600;
             font-size: 16px;
             cursor: pointer;
         }
 
-        #loading { display: none; text-align: center; color: var(--ios-secondary); margin: 10px; }
+        #loading { display: none; text-align: center; padding: 10px; }
     </style>
 </head>
 <body>
@@ -128,19 +126,14 @@
 
     <div id="view-explore" class="view active">
         <div id="reader-explore"></div>
-        <div id="loading">Buscando en Bsale...</div>
         <div id="result-explore" style="display:none">
             <div class="ios-card">
-                <div class="label">Nombre</div>
+                <div class="label">Producto</div>
                 <div id="exp-name" class="value">-</div>
                 <div class="label">SKU / Código</div>
                 <div id="exp-sku" class="value">-</div>
-                <div style="display: flex; justify-content: space-between;">
-                    <div>
-                        <div class="label">Costo Promedio</div>
-                        <div id="exp-cost" class="cost-value">$0</div>
-                    </div>
-                </div>
+                <div class="label">Costo Promedio</div>
+                <div id="exp-cost" class="cost-value">$0</div>
             </div>
             <button class="btn-ios" onclick="restartScanner()">Escanear otro</button>
         </div>
@@ -159,11 +152,22 @@
 
     <div id="view-receive" class="view">
         <div class="ios-card">
-            <h3>Recepcionar Stock</h3>
-            <p style="color:var(--ios-secondary); font-size: 14px;">Escanea un producto para sumar unidades al inventario.</p>
+            <h3>Entrada de Stock</h3>
+            <div class="label">Destino de Mercadería</div>
+            <select id="rec-office" class="ios-input"></select>
+            <p id="rec-status" style="font-size:13px; color:var(--ios-secondary)">Escanea para comenzar recepción.</p>
         </div>
         <div id="reader-receive"></div>
+        <div id="rec-form" style="display:none;" class="ios-card">
+            <h4 id="rec-prod-name" style="margin:0 0 15px 0">Producto</h4>
+            <div class="label">Cantidad a ingresar</div>
+            <input type="number" id="rec-quantity" class="ios-input" style="font-size:24px; text-align:center" placeholder="0">
+            <button class="btn-ios" onclick="confirmReceive()">Finalizar Ingreso</button>
+            <button class="btn-ios" style="background:#8E8E93; margin-top:10px;" onclick="restartScanner()">Cancelar</button>
         </div>
+    </div>
+
+    <div id="loading">Consultando Bsale...</div>
 
     <nav class="tab-bar">
         <a href="#" class="tab-item active" onclick="switchView('explore', this)">
@@ -173,7 +177,7 @@
             <span class="tab-icon">📦</span>Stock
         </a>
         <a href="#" class="tab-item" onclick="switchView('receive', this)">
-            <span class="tab-icon">➕</span>Recibir
+            <span class="tab-icon">📥</span>Recibir
         </a>
     </nav>
 
@@ -181,99 +185,117 @@
         const TOKEN = '684b8921739361288e129f1e4f6848ef60252217';
         let html5QrCode;
         let currentMode = 'explore';
+        let selectedVariantId = null;
 
-        // Cambiar entre pestañas
+        // 1. Cargar sucursales al iniciar
+        async function loadOffices() {
+            try {
+                const res = await fetch('https://api.bsale.io/v1/offices.json', { headers: { 'access_token': TOKEN } });
+                const data = await res.json();
+                const select = document.getElementById('rec-office');
+                data.items.forEach(off => {
+                    const opt = document.createElement('option');
+                    opt.value = off.id;
+                    opt.innerText = off.name;
+                    select.appendChild(opt);
+                });
+            } catch (e) { console.error("Error cargando sucursales"); }
+        }
+
         async function switchView(mode, element) {
             currentMode = mode;
-            
-            // UI
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.getElementById(`view-${mode}`).classList.add('active');
             document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
             element.classList.add('active');
-            
-            const titles = { explore: 'Explorar Producto', stock: 'Disponibilidad', receive: 'Recepción de Stock' };
+            const titles = { explore: 'Explorar Producto', stock: 'Stock Sucursales', receive: 'Recepción' };
             document.getElementById('viewTitle').innerText = titles[mode];
-
-            // Reiniciar Scanner en el nuevo contenedor
             if(html5QrCode) await html5QrCode.stop();
             initScanner(`reader-${mode}`);
         }
 
         function initScanner(containerId) {
             html5QrCode = new Html5Qrcode(containerId);
-            html5QrCode.start(
-                { facingMode: "environment" },
-                { fps: 15, qrbox: 250 },
-                onScanSuccess
-            );
+            html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, onScanSuccess);
         }
 
         async function onScanSuccess(decodedText) {
             await html5QrCode.pause();
             document.getElementById('loading').style.display = 'block';
-
             try {
-                // Buscamos variante expandiendo producto y costos
                 const res = await fetch(`https://api.bsale.io/v1/variants.json?barcode=${decodedText}&expand=[product,costs]`, {
                     headers: { 'access_token': TOKEN, 'Accept': 'application/json' }
                 });
                 const data = await res.json();
-
                 if (data.count > 0) {
                     const item = data.items[0];
                     if (currentMode === 'explore') showExplore(item);
                     else if (currentMode === 'stock') showStock(item);
-                    else if (currentMode === 'receive') alert("Producto listo para recibir: " + item.product.name);
-                } else {
-                    alert("No encontrado");
-                    restartScanner();
-                }
-            } catch (e) {
-                alert("Error de conexión");
-            } finally {
-                document.getElementById('loading').style.display = 'none';
-            }
+                    else if (currentMode === 'receive') showReceiveForm(item);
+                } else { alert("No encontrado"); restartScanner(); }
+            } catch (e) { alert("Error API"); restartScanner(); }
+            finally { document.getElementById('loading').style.display = 'none'; }
         }
 
         function showExplore(item) {
-            document.getElementById('exp-name').innerText = item.product.name + " (" + (item.description || 'Pca') + ")";
+            document.getElementById('exp-name').innerText = `${item.product.name} (${item.description || 'Pca'})`;
             document.getElementById('exp-sku').innerText = item.code;
-            // Bsale entrega costos en el nodo costs si se expande
-            const costo = item.costs ? `$${item.costs.averageCost.toLocaleString()}` : 'N/A';
-            document.getElementById('exp-cost').innerText = costo;
-            
+            document.getElementById('exp-cost').innerText = item.costs ? `$${item.costs.averageCost.toLocaleString()}` : 'N/A';
             document.getElementById('reader-explore').style.display = 'none';
             document.getElementById('result-explore').style.display = 'block';
         }
 
         async function showStock(item) {
-            const res = await fetch(`https://api.bsale.io/v1/stocks.json?variantid=${item.id}`, {
-                headers: { 'access_token': TOKEN }
-            });
-            const stockData = await res.json();
-            
+            const res = await fetch(`https://api.bsale.io/v1/stocks.json?variantid=${item.id}`, { headers: { 'access_token': TOKEN } });
+            const dataStock = await res.json();
             document.getElementById('stk-name').innerText = item.product.name;
-            let listHtml = '';
-            stockData.items.forEach(s => {
-                listHtml += `<div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:0.5px solid var(--ios-border)">
-                                <span>Sucursal ${s.officeId}</span>
-                                <strong>${s.quantity} uds</strong>
-                             </div>`;
+            let list = '';
+            dataStock.items.forEach(s => {
+                list += `<div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:0.5px solid var(--ios-border)">
+                <span>Sucursal ID: ${s.officeId}</span><strong>${s.quantity} uds</strong></div>`;
             });
-            document.getElementById('stk-list').innerHTML = listHtml;
+            document.getElementById('stk-list').innerHTML = list;
             document.getElementById('reader-stock').style.display = 'none';
             document.getElementById('result-stock').style.display = 'block';
         }
 
+        function showReceiveForm(item) {
+            selectedVariantId = item.id;
+            document.getElementById('rec-prod-name').innerText = item.product.name;
+            document.getElementById('reader-receive').style.display = 'none';
+            document.getElementById('rec-form').style.display = 'block';
+        }
+
+        async function confirmReceive() {
+            const qty = document.getElementById('rec-quantity').value;
+            const officeId = document.getElementById('rec-office').value;
+            if (!qty || qty <= 0) return alert("Cantidad inválida");
+
+            const payload = {
+                "receptionTypeId": 1, 
+                "officeId": parseInt(officeId),
+                "details": [{"variantId": selectedVariantId, "quantity": parseInt(qty), "cost": 0}]
+            };
+
+            try {
+                const res = await fetch('https://api.bsale.io/v1/receptions.json', {
+                    method: 'POST',
+                    headers: { 'access_token': TOKEN, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) { alert("✅ Stock ingresado correctamente"); restartScanner(); }
+                else { alert("Error al procesar"); }
+            } catch (e) { alert("Error de red"); }
+        }
+
         function restartScanner() {
-            document.getElementById('result-explore').style.display = 'none';
-            document.getElementById('result-stock').style.display = 'none';
-            document.getElementById(`reader-${currentMode}`).style.display = 'block';
+            document.querySelectorAll('[id^="result-"], #rec-form').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('[id^="reader-"]').forEach(el => el.style.display = 'block');
+            document.getElementById('rec-quantity').value = '';
             html5QrCode.resume();
         }
 
-        window.onload = () => initScanner('reader-explore');
+        window.onload = () => { loadOffices(); initScanner('reader-explore'); };
     </script>
 </body>
 </html>
