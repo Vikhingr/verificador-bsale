@@ -71,7 +71,6 @@
             box-sizing: border-box; font-size: 16px;
         }
 
-        /* Historial */
         .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .history-item {
             display: flex; justify-content: space-between; align-items: center;
@@ -101,10 +100,12 @@
         }
 
         .btn-link { background: none; border: none; color: var(--ios-blue); font-size: 12px; cursor: pointer; }
-        #loading { display: none; text-align: center; padding: 10px; }
+        #loading { display: none; text-align: center; padding: 10px; background: rgba(0,0,0,0.1); position: fixed; top: 0; width: 100%; z-index: 2000; }
     </style>
 </head>
 <body>
+
+    <div id="loading">Consultando Bsale...</div>
 
     <div class="nav-header">
         <h1 id="viewTitle">Explorar Producto</h1>
@@ -148,10 +149,14 @@
         <div class="ios-card">
             <h3>Configuración de Ingreso</h3>
             <div class="label">Tipo de Recepción</div>
-            <select id="rec-type" class="ios-input"><option>Cargando...</option></select>
+            <select id="rec-type" class="ios-input">
+                <option value="">Cargando tipos...</option>
+            </select>
             
             <div class="label">Sucursal Destino</div>
-            <select id="rec-office" class="ios-input"><option>Cargando...</option></select>
+            <select id="rec-office" class="ios-input">
+                <option value="">Cargando sucursales...</option>
+            </select>
         </div>
         
         <div id="reader-receive"></div>
@@ -164,8 +169,6 @@
             <button class="btn-ios" style="background:#8E8E93; margin-top:10px;" onclick="restartScanner()">Cancelar</button>
         </div>
     </div>
-
-    <div id="loading">Consultando Bsale...</div>
 
     <nav class="tab-bar">
         <a href="#" class="tab-item active" onclick="switchView('explore', this)">
@@ -187,34 +190,56 @@
         let currentItemCost = 0;
         let history = JSON.parse(localStorage.getItem('bsale_history')) || [];
 
-        // --- CARGA DE DATOS MAESTROS ---
+        // --- CARGA DE DATOS CON MEJORA DE SELECTORES ---
         async function loadInitialData() {
+            document.getElementById('loading').style.display = 'block';
             try {
-                // Cargar Sucursales
+                // 1. Cargar Sucursales
                 const resOff = await fetch('https://api.bsale.io/v1/offices.json', { headers: { 'access_token': TOKEN } });
                 const dataOff = await resOff.json();
                 const selectOff = document.getElementById('rec-office');
-                selectOff.innerHTML = '';
-                dataOff.items.forEach(off => {
-                    let opt = new Option(off.name, off.id);
-                    selectOff.add(opt);
-                });
+                if(dataOff.items) {
+                    selectOff.innerHTML = '';
+                    dataOff.items.forEach(off => selectOff.add(new Option(off.name, off.id)));
+                }
 
-                // Cargar Tipos de Recepción (Para evitar error "Verifica el tipo")
-                const resTyp = await fetch('https://api.bsale.io/v1/reception_types.json', { headers: { 'access_token': TOKEN } });
-                const dataTyp = await resTyp.json();
-                const selectTyp = document.getElementById('rec-type');
-                selectTyp.innerHTML = '';
-                dataTyp.items.forEach(type => {
-                    if(type.state === 0) { // Solo activos
-                        let opt = new Option(type.name, type.id);
-                        selectTyp.add(opt);
-                    }
-                });
-            } catch (e) { console.error("Error cargando datos iniciales"); }
+                // 2. Cargar Tipos de Recepción con Fallback
+                await loadReceptionTypes();
+
+            } catch (e) { 
+                console.error("Error inicial:", e);
+                alert("Error al conectar con Bsale. Revisa tu Token.");
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
         }
 
-        // --- HISTORIAL ---
+        async function loadReceptionTypes() {
+            const selectTyp = document.getElementById('rec-type');
+            try {
+                const resTyp = await fetch('https://api.bsale.io/v1/reception_types.json', { headers: { 'access_token': TOKEN } });
+                const dataTyp = await resTyp.json();
+                
+                if (dataTyp.items && dataTyp.items.length > 0) {
+                    selectTyp.innerHTML = '';
+                    dataTyp.items.forEach(type => {
+                        if(type.state === 0) selectTyp.add(new Option(type.name, type.id));
+                    });
+                } else {
+                    throw new Error("No hay tipos");
+                }
+            } catch (e) {
+                // FALLBACK: Si la API no responde o está vacío, forzamos los IDs comunes
+                console.warn("Usando tipos de recepción genéricos");
+                selectTyp.innerHTML = `
+                    <option value="1">Recepción por Ajuste (ID 1)</option>
+                    <option value="2">Recepción por Compra (ID 2)</option>
+                    <option value="3">Ingreso Manual (ID 3)</option>
+                `;
+            }
+        }
+
+        // --- LÓGICA DE HISTORIAL ---
         function addToHistory(item) {
             const entry = {
                 name: item.product.name,
@@ -246,9 +271,11 @@
         }
 
         function clearHistory() {
-            history = [];
-            localStorage.removeItem('bsale_history');
-            renderHistory();
+            if(confirm("¿Limpiar historial?")) {
+                history = [];
+                localStorage.removeItem('bsale_history');
+                renderHistory();
+            }
         }
 
         function revisitItem(index) {
@@ -262,7 +289,7 @@
             }
         }
 
-        // --- SCANNER ---
+        // --- SCANNER Y VISTAS ---
         async function switchView(mode, element) {
             currentMode = mode;
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -312,7 +339,7 @@
             document.getElementById('stk-name').innerText = item.product.name;
             document.getElementById('stk-list').innerHTML = ds.items.map(s => `
                 <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:0.5px solid var(--ios-border)">
-                <span>Sucursal ID: ${s.officeId}</span><strong>${s.quantity} uds</strong></div>`).join('');
+                <span>ID Suc: ${s.officeId}</span><strong>${s.quantity} uds</strong></div>`).join('');
             document.getElementById('reader-stock').style.display = 'none';
             document.getElementById('result-stock').style.display = 'block';
         }
@@ -331,6 +358,7 @@
             const typeId = document.getElementById('rec-type').value;
 
             if (!qty || qty <= 0) return alert("Cantidad inválida");
+            if (!typeId) return alert("Selecciona un tipo de recepción");
 
             const payload = {
                 "receptionTypeId": parseInt(typeId),
