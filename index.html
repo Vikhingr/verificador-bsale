@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bsale Suite iOS Pro</title>
+    <title>Bsale Stock Manager</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         :root {
@@ -16,96 +16,34 @@
         }
 
         @media (prefers-color-scheme: dark) {
-            :root {
-                --ios-bg: #000;
-                --ios-card: rgba(28, 28, 30, 0.9);
-                --ios-text: #FFF;
-                --ios-border: #38383A;
-            }
+            :root { --ios-bg: #000; --ios-card: rgba(28, 28, 30, 0.9); --ios-text: #FFF; --ios-border: #38383A; }
         }
 
-        body {
-            font-family: -apple-system, system-ui, sans-serif;
-            background-color: var(--ios-bg);
-            color: var(--ios-text);
-            margin: 0;
-            padding-bottom: 110px;
-        }
-
-        .nav-header {
-            position: sticky; top: 0;
-            background: var(--ios-card);
-            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-            padding: 15px; text-align: center;
-            border-bottom: 0.5px solid var(--ios-border);
-            z-index: 100;
-        }
-
+        body { font-family: -apple-system, sans-serif; background: var(--ios-bg); color: var(--ios-text); margin: 0; padding-bottom: 110px; }
+        .nav-header { position: sticky; top: 0; background: var(--ios-card); backdrop-filter: blur(20px); padding: 15px; text-align: center; border-bottom: 0.5px solid var(--ios-border); z-index: 100; }
         .nav-header h1 { margin: 0; font-size: 17px; font-weight: 600; }
-
         .view { display: none; padding: 20px; animation: fadeIn 0.3s; }
         .view.active { display: block; }
-
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        #reader-explore, #reader-stock, #reader-receive {
-            width: 100% !important; max-width: 400px;
-            margin: 0 auto 20px; border-radius: 20px;
-            overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-
-        .ios-card {
-            background: var(--ios-card); border-radius: 15px;
-            padding: 20px; margin-bottom: 20px;
-            backdrop-filter: blur(10px); border: 0.5px solid var(--ios-border);
-        }
-
+        .ios-card { background: var(--ios-card); border-radius: 15px; padding: 20px; margin-bottom: 20px; border: 0.5px solid var(--ios-border); }
         .label { font-size: 11px; color: var(--ios-secondary); text-transform: uppercase; margin-bottom: 4px; font-weight: 600; }
         .value { font-size: 16px; font-weight: 500; margin-bottom: 12px; }
-        .cost-value { color: #34C759; font-weight: 700; font-size: 1.3rem; }
-
-        .ios-input {
-            width: 100%; padding: 12px; margin-bottom: 15px;
-            border-radius: 10px; border: 1px solid var(--ios-border);
-            background: var(--ios-bg); color: var(--ios-text);
-            box-sizing: border-box; font-size: 16px;
-        }
-
-        .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .history-item {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 12px 0; border-bottom: 0.5px solid var(--ios-border);
-            cursor: pointer;
-        }
-        .history-item:active { background: rgba(0,0,0,0.05); }
-        .history-name { font-size: 14px; font-weight: 500; color: var(--ios-blue); }
-        .history-sku { font-size: 11px; color: var(--ios-secondary); }
-
-        .tab-bar {
-            position: fixed; bottom: 0; width: 100%;
-            background: var(--ios-card); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
-            display: flex; justify-content: space-around;
-            padding: 10px 0 25px 0; border-top: 0.5px solid var(--ios-border);
-            z-index: 1000;
-        }
-
+        .ios-input { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 10px; border: 1px solid var(--ios-border); background: var(--ios-bg); color: var(--ios-text); font-size: 16px; box-sizing: border-box; }
+        .btn-ios { background: var(--ios-blue); color: white; border: none; padding: 16px; border-radius: 14px; width: 100%; font-weight: 600; font-size: 16px; cursor: pointer; }
+        
+        .tab-bar { position: fixed; bottom: 0; width: 100%; background: var(--ios-card); backdrop-filter: blur(25px); display: flex; padding: 10px 0 25px 0; border-top: 0.5px solid var(--ios-border); }
         .tab-item { text-align: center; color: var(--ios-secondary); font-size: 10px; text-decoration: none; flex: 1; }
         .tab-item.active { color: var(--ios-blue); }
         .tab-icon { font-size: 24px; display: block; margin-bottom: 4px; }
-
-        .btn-ios {
-            background: var(--ios-blue); color: white; border: none;
-            padding: 16px; border-radius: 14px; width: 100%;
-            font-weight: 600; font-size: 16px; cursor: pointer;
-        }
-
-        .btn-link { background: none; border: none; color: var(--ios-blue); font-size: 12px; cursor: pointer; }
-        #loading { display: none; text-align: center; padding: 10px; background: rgba(0,0,0,0.1); position: fixed; top: 0; width: 100%; z-index: 2000; }
+        
+        #loading { display: none; text-align: center; padding: 10px; background: var(--ios-blue); color: white; position: fixed; top: 0; width: 100%; z-index: 2000; font-size: 12px; }
+        #reader-explore, #reader-stock, #reader-receive { width: 100%; max-width: 400px; margin: 0 auto 20px; border-radius: 20px; overflow: hidden; }
     </style>
 </head>
 <body>
 
-    <div id="loading">Consultando Bsale...</div>
+    <div id="loading">Conectando con Bsale...</div>
 
     <div class="nav-header">
         <h1 id="viewTitle">Explorar Producto</h1>
@@ -120,17 +58,9 @@
                 <div class="label">SKU / Código</div>
                 <div id="exp-sku" class="value">-</div>
                 <div class="label">Costo Promedio</div>
-                <div id="exp-cost" class="cost-value">$0</div>
+                <div id="exp-cost" style="color:#34C759; font-weight:700; font-size:1.3rem;">$0</div>
             </div>
             <button class="btn-ios" onclick="restartScanner()">Escanear otro</button>
-        </div>
-        
-        <div class="ios-card">
-            <div class="history-header">
-                <div class="label" style="margin:0">Escaneos Recientes</div>
-                <button class="btn-link" onclick="clearHistory()">Limpiar</button>
-            </div>
-            <div id="history-list"></div>
         </div>
     </div>
 
@@ -138,7 +68,7 @@
         <div id="reader-stock"></div>
         <div id="result-stock" style="display:none">
             <div class="ios-card">
-                <h3 id="stk-name" style="margin-top:0">Producto</h3>
+                <h3 id="stk-name" style="margin-top:0">Stock Actual</h3>
                 <div id="stk-list"></div>
             </div>
             <button class="btn-ios" onclick="restartScanner()">Escanear otro</button>
@@ -147,15 +77,14 @@
 
     <div id="view-receive" class="view">
         <div class="ios-card">
-            <h3>Configuración de Ingreso</h3>
-            <div class="label">Tipo de Recepción</div>
-            <select id="rec-type" class="ios-input">
-                <option value="">Cargando tipos...</option>
-            </select>
+            <div class="label">Sucursal de Ingreso</div>
+            <select id="rec-office" class="ios-input"></select>
             
-            <div class="label">Sucursal Destino</div>
-            <select id="rec-office" class="ios-input">
-                <option value="">Cargando sucursales...</option>
+            <div class="label">Tipo de Documento</div>
+            <select id="rec-doc-type" class="ios-input">
+                <option value="GUÍA">GUÍA</option>
+                <option value="FACTURA">FACTURA</option>
+                <option value="OTRO">OTRO (Ingreso Manual)</option>
             </select>
         </div>
         
@@ -165,144 +94,45 @@
             <h4 id="rec-prod-name" style="margin:0 0 15px 0">Producto</h4>
             <div class="label">Cantidad a ingresar</div>
             <input type="number" id="rec-quantity" class="ios-input" style="font-size:24px; text-align:center" placeholder="0">
-            <button class="btn-ios" onclick="confirmReceive()">Finalizar Ingreso</button>
+            <button class="btn-ios" onclick="confirmStockEntry()">Ingresar Stock</button>
             <button class="btn-ios" style="background:#8E8E93; margin-top:10px;" onclick="restartScanner()">Cancelar</button>
         </div>
     </div>
 
     <nav class="tab-bar">
-        <a href="#" class="tab-item active" onclick="switchView('explore', this)">
-            <span class="tab-icon">🔍</span>Explorar
-        </a>
-        <a href="#" class="tab-item" onclick="switchView('stock', this)">
-            <span class="tab-icon">📦</span>Stock
-        </a>
-        <a href="#" class="tab-item" onclick="switchView('receive', this)">
-            <span class="tab-icon">📥</span>Recibir
-        </a>
+        <a href="#" class="tab-item active" onclick="switchView('explore', this)"><span class="tab-icon">🔍</span>Explorar</a>
+        <a href="#" class="tab-item" onclick="switchView('stock', this)"><span class="tab-icon">📦</span>Stock</a>
+        <a href="#" class="tab-item" onclick="switchView('receive', this)"><span class="tab-icon">📥</span>Recibir</a>
     </nav>
 
     <script>
         const TOKEN = '684b8921739361288e129f1e4f6848ef60252217';
         let html5QrCode;
         let currentMode = 'explore';
-        let selectedVariantId = null;
-        let currentItemCost = 0;
-        let history = JSON.parse(localStorage.getItem('bsale_history')) || [];
+        let currentItem = null;
 
-        // --- CARGA DE DATOS CON MEJORA DE SELECTORES ---
-        async function loadInitialData() {
-            document.getElementById('loading').style.display = 'block';
+        async function loadOffices() {
             try {
-                // 1. Cargar Sucursales
-                const resOff = await fetch('https://api.bsale.io/v1/offices.json', { headers: { 'access_token': TOKEN } });
-                const dataOff = await resOff.json();
-                const selectOff = document.getElementById('rec-office');
-                if(dataOff.items) {
-                    selectOff.innerHTML = '';
-                    dataOff.items.forEach(off => selectOff.add(new Option(off.name, off.id)));
-                }
-
-                // 2. Cargar Tipos de Recepción con Fallback
-                await loadReceptionTypes();
-
-            } catch (e) { 
-                console.error("Error inicial:", e);
-                alert("Error al conectar con Bsale. Revisa tu Token.");
-            } finally {
-                document.getElementById('loading').style.display = 'none';
-            }
+                const res = await fetch('https://api.bsale.io/v1/offices.json', { headers: { 'access_token': TOKEN } });
+                const data = await res.json();
+                const select = document.getElementById('rec-office');
+                select.innerHTML = '';
+                data.items.forEach(off => select.add(new Option(off.name, off.id)));
+            } catch (e) { alert("Error cargando sucursales"); }
         }
 
-        async function loadReceptionTypes() {
-            const selectTyp = document.getElementById('rec-type');
-            try {
-                const resTyp = await fetch('https://api.bsale.io/v1/reception_types.json', { headers: { 'access_token': TOKEN } });
-                const dataTyp = await resTyp.json();
-                
-                if (dataTyp.items && dataTyp.items.length > 0) {
-                    selectTyp.innerHTML = '';
-                    dataTyp.items.forEach(type => {
-                        if(type.state === 0) selectTyp.add(new Option(type.name, type.id));
-                    });
-                } else {
-                    throw new Error("No hay tipos");
-                }
-            } catch (e) {
-                // FALLBACK: Si la API no responde o está vacío, forzamos los IDs comunes
-                console.warn("Usando tipos de recepción genéricos");
-                selectTyp.innerHTML = `
-                    <option value="1">Recepción por Ajuste (ID 1)</option>
-                    <option value="2">Recepción por Compra (ID 2)</option>
-                    <option value="3">Ingreso Manual (ID 3)</option>
-                `;
-            }
-        }
-
-        // --- LÓGICA DE HISTORIAL ---
-        function addToHistory(item) {
-            const entry = {
-                name: item.product.name,
-                sku: item.code,
-                cost: item.costs ? item.costs.averageCost : 0,
-                time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
-            };
-            history.unshift(entry);
-            if (history.length > 10) history.pop();
-            localStorage.setItem('bsale_history', JSON.stringify(history));
-            renderHistory();
-        }
-
-        function renderHistory() {
-            const container = document.getElementById('history-list');
-            if (history.length === 0) {
-                container.innerHTML = '<p style="color:gray; font-size:12px; text-align:center;">Sin escaneos</p>';
-                return;
-            }
-            container.innerHTML = history.map((h, i) => `
-                <div class="history-item" onclick="revisitItem(${i})">
-                    <div class="history-info">
-                        <span class="history-name">${h.name}</span>
-                        <span class="history-sku">SKU: ${h.sku}</span>
-                    </div>
-                    <span class="history-sku">${h.time}</span>
-                </div>
-            `).join('');
-        }
-
-        function clearHistory() {
-            if(confirm("¿Limpiar historial?")) {
-                history = [];
-                localStorage.removeItem('bsale_history');
-                renderHistory();
-            }
-        }
-
-        function revisitItem(index) {
-            const item = history[index];
-            if (currentMode === 'explore') {
-                document.getElementById('exp-name').innerText = item.name;
-                document.getElementById('exp-sku').innerText = item.sku;
-                document.getElementById('exp-cost').innerText = `$${item.cost.toLocaleString()}`;
-                document.getElementById('reader-explore').style.display = 'none';
-                document.getElementById('result-explore').style.display = 'block';
-            }
-        }
-
-        // --- SCANNER Y VISTAS ---
         async function switchView(mode, element) {
             currentMode = mode;
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.getElementById(`view-${mode}`).classList.add('active');
             document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
             element.classList.add('active');
-            document.getElementById('viewTitle').innerText = { explore: 'Explorar', stock: 'Stock', receive: 'Recepción' }[mode];
             if(html5QrCode) await html5QrCode.stop();
             initScanner(`reader-${mode}`);
         }
 
-        function initScanner(containerId) {
-            html5QrCode = new Html5Qrcode(containerId);
+        function initScanner(id) {
+            html5QrCode = new Html5Qrcode(id);
             html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, onScanSuccess);
         }
 
@@ -315,71 +145,81 @@
                 });
                 const data = await res.json();
                 if (data.count > 0) {
-                    const item = data.items[0];
-                    addToHistory(item);
-                    if (currentMode === 'explore') showExplore(item);
-                    else if (currentMode === 'stock') showStock(item);
-                    else if (currentMode === 'receive') showReceiveForm(item);
-                } else { alert("No encontrado"); restartScanner(); }
-            } catch (e) { alert("Error API"); restartScanner(); }
+                    currentItem = data.items[0];
+                    if (currentMode === 'explore') showExplore();
+                    else if (currentMode === 'stock') showStock();
+                    else if (currentMode === 'receive') showReceiveForm();
+                } else { alert("Producto no encontrado"); restartScanner(); }
+            } catch (e) { alert("Error de conexión"); restartScanner(); }
             finally { document.getElementById('loading').style.display = 'none'; }
         }
 
-        function showExplore(item) {
-            document.getElementById('exp-name').innerText = item.product.name;
-            document.getElementById('exp-sku').innerText = item.code;
-            document.getElementById('exp-cost').innerText = item.costs ? `$${item.costs.averageCost.toLocaleString()}` : '$0';
+        function showExplore() {
+            document.getElementById('exp-name').innerText = currentItem.product.name;
+            document.getElementById('exp-sku').innerText = currentItem.code;
+            document.getElementById('exp-cost').innerText = `$${(currentItem.costs?.averageCost || 0).toLocaleString()}`;
             document.getElementById('reader-explore').style.display = 'none';
             document.getElementById('result-explore').style.display = 'block';
         }
 
-        async function showStock(item) {
-            const res = await fetch(`https://api.bsale.io/v1/stocks.json?variantid=${item.id}`, { headers: { 'access_token': TOKEN } });
+        async function showStock() {
+            const res = await fetch(`https://api.bsale.io/v1/stocks.json?variantid=${currentItem.id}`, { headers: { 'access_token': TOKEN } });
             const ds = await res.json();
-            document.getElementById('stk-name').innerText = item.product.name;
+            document.getElementById('stk-name').innerText = currentItem.product.name;
             document.getElementById('stk-list').innerHTML = ds.items.map(s => `
                 <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:0.5px solid var(--ios-border)">
-                <span>ID Suc: ${s.officeId}</span><strong>${s.quantity} uds</strong></div>`).join('');
+                <span>Sucursal ID: ${s.officeId}</span><strong>${s.quantity} uds</strong></div>`).join('');
             document.getElementById('reader-stock').style.display = 'none';
             document.getElementById('result-stock').style.display = 'block';
         }
 
-        function showReceiveForm(item) {
-            selectedVariantId = item.id;
-            currentItemCost = item.costs ? item.costs.averageCost : 1;
-            document.getElementById('rec-prod-name').innerText = item.product.name;
+        function showReceiveForm() {
+            document.getElementById('rec-prod-name').innerText = currentItem.product.name;
             document.getElementById('reader-receive').style.display = 'none';
             document.getElementById('rec-form').style.display = 'block';
         }
 
-        async function confirmReceive() {
+        // --- FUNCIÓN POST CORREGIDA SEGÚN TU DOCUMENTACIÓN ---
+        async function confirmStockEntry() {
             const qty = document.getElementById('rec-quantity').value;
             const officeId = document.getElementById('rec-office').value;
-            const typeId = document.getElementById('rec-type').value;
+            const docType = document.getElementById('rec-doc-type').value;
 
             if (!qty || qty <= 0) return alert("Cantidad inválida");
-            if (!typeId) return alert("Selecciona un tipo de recepción");
 
+            document.getElementById('loading').style.display = 'block';
+
+            // Estructura JSON exacta de tu documentación (POST /v1/stocks/receptions.json)
             const payload = {
-                "receptionTypeId": parseInt(typeId),
+                "document": docType,
                 "officeId": parseInt(officeId),
-                "details": [{
-                    "variantId": parseInt(selectedVariantId),
-                    "quantity": parseFloat(qty),
-                    "cost": parseFloat(currentItemCost) || 1
-                }]
+                "documentNumber": Math.floor(Date.now() / 1000).toString().substring(4), // Num aleatorio basado en tiempo
+                "note": "Ingreso desde App Móvil iOS",
+                "details": [
+                    {
+                        "quantity": parseFloat(qty),
+                        "code": currentItem.code, // Usamos el SKU (code) como referencia
+                        "cost": currentItem.costs?.averageCost || 1
+                    }
+                ]
             };
 
             try {
-                const res = await fetch('https://api.bsale.io/v1/receptions.json', {
+                const res = await fetch('https://api.bsale.io/v1/stocks/receptions.json', {
                     method: 'POST',
                     headers: { 'access_token': TOKEN, 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                const responseData = await res.json();
-                if (res.ok) { alert("✅ Recepción exitosa"); restartScanner(); }
-                else { alert("Error Bsale: " + (responseData.errors || "Verifica datos")); }
-            } catch (e) { alert("Error conexión"); }
+                
+                if (res.ok) {
+                    alert("✅ Stock ingresado correctamente");
+                    restartScanner();
+                } else {
+                    const err = await res.json();
+                    alert("Error Bsale: " + (err.errors || "Datos incorrectos"));
+                }
+            } catch (e) { alert("Error de red"); }
+            finally { document.getElementById('loading').style.display = 'none'; }
         }
 
         function restartScanner() {
@@ -389,7 +229,7 @@
             if(html5QrCode) html5QrCode.resume();
         }
 
-        window.onload = () => { loadInitialData(); renderHistory(); initScanner('reader-explore'); };
+        window.onload = () => { loadOffices(); initScanner('reader-explore'); };
     </script>
 </body>
 </html>
